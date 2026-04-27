@@ -1796,10 +1796,15 @@
       <div class="filter-row">
         <button class="filter-btn active" onclick="filterSessions('All', this)">All</button>
         <button class="filter-btn" onclick="filterSessions('social', this)">🤝 Social</button>
-        <button class="filter-btn" onclick="filterSessions('group', this)">👥 Group coaching</button>
+        <button class="filter-btn" onclick="filterSessions('group', this)">👥 Group</button>
         <button class="filter-btn" onclick="filterSessions('private', this)">👤 Private</button>
-        <button class="filter-btn" onclick="filterSessions('Saturday', this)">Saturday</button>
-        <button class="filter-btn" onclick="filterSessions('Sunday', this)">Sunday</button>
+        <button class="filter-btn" onclick="filterSessions('Monday', this)">Mon</button>
+        <button class="filter-btn" onclick="filterSessions('Tuesday', this)">Tue</button>
+        <button class="filter-btn" onclick="filterSessions('Wednesday', this)">Wed</button>
+        <button class="filter-btn" onclick="filterSessions('Thursday', this)">Thu</button>
+        <button class="filter-btn" onclick="filterSessions('Friday', this)">Fri</button>
+        <button class="filter-btn" onclick="filterSessions('Saturday', this)">Sat</button>
+        <button class="filter-btn" onclick="filterSessions('Sunday', this)">Sun</button>
       </div>
     </div>
 
@@ -1961,6 +1966,12 @@
   // platform may not be defined yet at first render; we re-render after loadAllData.
   const booked = new Set();
   let currentFilter = "All";
+  
+  // Multi-filter state: {types: Set(['social', 'group']), days: Set(['Monday', 'Tuesday'])}
+  const activeFilters = {
+    types: new Set(),
+    days: new Set()
+  };
 
   const levelBadge = { Beginner:"badge-beg", Intermediate:"badge-int", Advanced:"badge-adv" };
 
@@ -1971,7 +1982,7 @@
     return '';
   }
 
-  function renderSessions(filter) {
+  function renderSessions() {
     const grid = document.getElementById("sessions-grid");
     if (!grid) return;
     // Safely access platform (may be undefined before const declaration runs)
@@ -1981,10 +1992,18 @@
       grid.innerHTML = '<div style="grid-column:1/-1; padding:40px; text-align:center; color:var(--text-muted);">Loading sessions...</div>';
       return;
     }
-    const list = filter === "All" ? liveSessions :
-      (['social','group','private'].includes(filter)
-        ? liveSessions.filter(s => (s.sessionType || 'group') === filter)
-        : liveSessions.filter(s => s.date === filter));
+    // Apply multi-filters
+    let list = liveSessions;
+    
+    // Filter by session types if any selected
+    if (activeFilters.types.size > 0) {
+      list = list.filter(s => activeFilters.types.has(s.sessionType || 'group'));
+    }
+    
+    // Filter by days if any selected
+    if (activeFilters.days.size > 0) {
+      list = list.filter(s => activeFilters.days.has(s.date));
+    }
     if (list.length === 0) {
       grid.innerHTML = `<div style="grid-column:1/-1; padding:40px; text-align:center; color:var(--text-muted);">No ${filter} sessions available right now. <br>Check back soon!</div>`;
       return;
@@ -2049,16 +2068,51 @@
     }).join("");
   }
 
-  function filterSessions(level, btn) {
-    currentFilter = level;
-    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    renderSessions(level);
+  function filterSessions(filter, btn) {
+    const types = ['social', 'group', 'private'];
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    
+    if (filter === 'All') {
+      // Clear all filters
+      activeFilters.types.clear();
+      activeFilters.days.clear();
+      document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    } else if (types.includes(filter)) {
+      // Toggle session type filter
+      if (activeFilters.types.has(filter)) {
+        activeFilters.types.delete(filter);
+        btn.classList.remove("active");
+      } else {
+        activeFilters.types.add(filter);
+        btn.classList.add("active");
+      }
+      // Deactivate "All" button
+      document.querySelector('.filter-btn[onclick*="All"]').classList.remove("active");
+    } else if (days.includes(filter)) {
+      // Toggle day filter
+      if (activeFilters.days.has(filter)) {
+        activeFilters.days.delete(filter);
+        btn.classList.remove("active");
+      } else {
+        activeFilters.days.add(filter);
+        btn.classList.add("active");
+      }
+      // Deactivate "All" button
+      document.querySelector('.filter-btn[onclick*="All"]').classList.remove("active");
+    }
+    
+    // If no filters active, activate "All"
+    if (activeFilters.types.size === 0 && activeFilters.days.size === 0) {
+      document.querySelector('.filter-btn[onclick*="All"]').classList.add("active");
+    }
+    
+    renderSessions();
   }
 
   // (Old openModal/closeModal/confirmBooking removed — replaced by Supabase-backed flow)
 
-  renderSessions("All");
+  renderSessions();
 
 
   // ============ SUPABASE SETUP ============
@@ -2873,14 +2927,57 @@
     if (tab === "mybookings") renderMyBookings();
   }
   function appUserFilter(filter, btn) {
-    platform.userFilter = filter;
-    document.querySelectorAll("#userApp .app-pill").forEach(p => p.classList.remove("active"));
-    btn.classList.add("active");
+    const types = ['social', 'group', 'private'];
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    
+    if (!platform.appFilters) {
+      platform.appFilters = { types: new Set(), days: new Set() };
+    }
+    
+    if (filter === 'All') {
+      platform.appFilters.types.clear();
+      platform.appFilters.days.clear();
+      document.querySelectorAll("#userApp .app-pill").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+    } else if (types.includes(filter)) {
+      if (platform.appFilters.types.has(filter)) {
+        platform.appFilters.types.delete(filter);
+        btn.classList.remove("active");
+      } else {
+        platform.appFilters.types.add(filter);
+        btn.classList.add("active");
+      }
+      document.querySelector('#userApp .app-pill[onclick*="All"]').classList.remove("active");
+    } else if (days.includes(filter)) {
+      if (platform.appFilters.days.has(filter)) {
+        platform.appFilters.days.delete(filter);
+        btn.classList.remove("active");
+      } else {
+        platform.appFilters.days.add(filter);
+        btn.classList.add("active");
+      }
+      document.querySelector('#userApp .app-pill[onclick*="All"]').classList.remove("active");
+    }
+    
+    if (platform.appFilters.types.size === 0 && platform.appFilters.days.size === 0) {
+      document.querySelector('#userApp .app-pill[onclick*="All"]').classList.add("active");
+    }
+    
     renderAppUserSessions();
   }
   function renderAppUserSessions() {
     const grid = document.getElementById("appUserSessionsGrid");
-    const list = platform.userFilter === "All" ? platform.platformSessions : platform.platformSessions.filter(s => s.date === platform.userFilter);
+    if (!platform.appFilters) {
+      platform.appFilters = { types: new Set(), days: new Set() };
+    }
+    
+    let list = platform.platformSessions;
+    if (platform.appFilters.types.size > 0) {
+      list = list.filter(s => platform.appFilters.types.has(s.sessionType || 'group'));
+    }
+    if (platform.appFilters.days.size > 0) {
+      list = list.filter(s => platform.appFilters.days.has(s.date));
+    }
     if (list.length === 0) {
       grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">🏸</div>No sessions in this category yet.</div>';
       return;
@@ -3667,8 +3764,16 @@
     <div class="app-tab-content active" id="utab-browse">
       <div class="filter-pills" style="margin-bottom:20px;">
         <button class="app-pill active" onclick="appUserFilter('All', this)">All</button>
-        <button class="app-pill" onclick="appUserFilter('Saturday', this)">Saturday</button>
-        <button class="app-pill" onclick="appUserFilter('Sunday', this)">Sunday</button>
+        <button class="app-pill" onclick="appUserFilter('social', this)">🤝 Social</button>
+        <button class="app-pill" onclick="appUserFilter('group', this)">👥 Group</button>
+        <button class="app-pill" onclick="appUserFilter('private', this)">👤 Private</button>
+        <button class="app-pill" onclick="appUserFilter('Monday', this)">Mon</button>
+        <button class="app-pill" onclick="appUserFilter('Tuesday', this)">Tue</button>
+        <button class="app-pill" onclick="appUserFilter('Wednesday', this)">Wed</button>
+        <button class="app-pill" onclick="appUserFilter('Thursday', this)">Thu</button>
+        <button class="app-pill" onclick="appUserFilter('Friday', this)">Fri</button>
+        <button class="app-pill" onclick="appUserFilter('Saturday', this)">Sat</button>
+        <button class="app-pill" onclick="appUserFilter('Sunday', this)">Sun</button>
       </div>
       <div class="app-sessions-grid" id="appUserSessionsGrid"></div>
     </div>
