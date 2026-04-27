@@ -2415,7 +2415,7 @@
     document.getElementById("coachEditorSuccess").style.display = "none";
     document.getElementById("coachPhotoStatus").style.display = "none";
     // Reset file input
-    const input = document.getElementById("coachPhotoInput");
+    const photoInput = document.getElementById("coachPhotoInput");
     if (input) input.value = "";
     // Show current photo in preview
     const preview = document.getElementById("coachPhotoPreview");
@@ -2535,7 +2535,7 @@
   }
 
   async function uploadCoachPhoto() {
-    const input = document.getElementById("coachPhotoInput");
+    const photoField = document.getElementById("coachPhotoInput");
     if (!input || !input.files || !input.files[0]) return null;
     const file = input.files[0];
     const ext = file.name.split(".").pop().toLowerCase();
@@ -2615,17 +2615,17 @@
   function openVideoEditor() {
     // Load current video ID
     const vids = platform.coachProfile.videos || ['gAyK1spQUi0'];
-    const input = document.getElementById('vid1');
-    if (input) input.value = vids[0] ? `https://youtube.com/shorts/${vids[0]}` : '';
+    const videoInput = document.getElementById('vid1');
+    if (videoInput) videoInput.value = vids[0] ? `https://youtube.com/shorts/${vids[0]}` : '';
     document.getElementById('vid1Preview').style.display = 'none';
     document.getElementById('videoEditorSuccess').style.display = 'none';
     document.getElementById('videoEditorModal').classList.add('open');
 
     // Add live preview on input change
-    const input = document.getElementById('vid1');
-    if (input) {
-      input.oninput = () => {
-        const ytId = extractYouTubeId(input.value);
+    const videoInput = document.getElementById('vid1');
+    if (videoInput) {
+      videoInput.oninput = () => {
+        const ytId = extractYouTubeId(videoInput.value);
         const preview = document.getElementById('vid1Preview');
         const frame = document.getElementById('vid1Frame');
         if (ytId) {
