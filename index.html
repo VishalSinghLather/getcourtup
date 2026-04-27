@@ -3197,8 +3197,12 @@
     if (s.bookedUserIds.includes(platform.currentUser.id)) { showAppToast("You're already booked ✓"); return; }
     if (s.bookedUserIds.length >= s.totalSpots) { showAppToast("This session is full"); return; }
     platform.bookingSessionId = sid;
+    bulkBookingQty = 1; // Reset to single session
     document.getElementById("bookModalVenue").textContent = s.venue;
     document.getElementById("bookModalPrice").textContent = `$${s.price}`;
+    
+    // Initialize bulk buttons
+    selectBulkQty(1);
     const minToRun = s.minSpots || 2;
     const runStatus = s.bookedUserIds.length + 1 >= minToRun ? "Confirmed once you book ✓" : `Needs ${minToRun - (s.bookedUserIds.length + 1)} more after you`;
     document.getElementById("bookModalRows").innerHTML = [
@@ -3219,7 +3223,17 @@
     if (!s) return;
     document.getElementById("payIdVenue").textContent = `${s.venue} · ${formatSessionDate(s.startsAt, s.date)} · ${s.time}`;
     document.getElementById("payIdCourt").textContent = s.court;
-    document.getElementById("payIdAmount").textContent = `$${s.price}`;
+    const booking = (s.bookings || []).find(b => b.userId === platform.currentUser.id && b.status === 'awaiting_payment');
+    const qty = booking && booking.quantity ? booking.quantity : 1;
+    const discount = booking && booking.discountPercent ? booking.discountPercent : 0;
+    
+    document.getElementById("payIdAmount").textContent = `$${booking ? booking.amountPaid : s.price}`;
+    
+    if (qty > 1) {
+      document.getElementById("payIdBulkInfo").textContent = `${qty} sessions · ${discount}% discount`;
+    } else {
+      document.getElementById("payIdBulkInfo").textContent = '';
+    }
     document.getElementById("payIdRef").textContent = buildRef(s, platform.currentUser);
     document.getElementById("payIdPhone").textContent = platform.payId.phone;
     document.getElementById("payIdName").textContent = platform.payId.name;
@@ -3229,10 +3243,20 @@
     const s = platform.platformSessions.find(x => x.id === platform.bookingSessionId);
     if (!s) return;
 
+    const basePrice = s.price;
+    const qty = bulkBookingQty;
+    const totalBase = basePrice * qty;
+    let discount = 0;
+    if (qty === 5) discount = 0.05;
+    if (qty === 10) discount = 0.10;
+    const finalPrice = Math.round(totalBase * (1 - discount));
+
     const { data: newBooking, error } = await sb.from('bookings').insert({
       user_id: platform.currentUser.id,
       session_id: s.id,
-      amount_paid: s.price,
+      amount_paid: finalPrice,
+      quantity: qty,
+      discount_percent: Math.round(discount * 100),
       status: 'awaiting_payment'
     }).select().single();
 
@@ -3268,7 +3292,17 @@
     // Show PayID modal (re-using reshowPayId logic)
     document.getElementById("payIdVenue").textContent = `${s.venue} · ${formatSessionDate(s.startsAt, s.date)} · ${s.time}`;
     document.getElementById("payIdCourt").textContent = s.court;
-    document.getElementById("payIdAmount").textContent = `$${s.price}`;
+    const booking = (s.bookings || []).find(b => b.userId === platform.currentUser.id && b.status === 'awaiting_payment');
+    const qty = booking && booking.quantity ? booking.quantity : 1;
+    const discount = booking && booking.discountPercent ? booking.discountPercent : 0;
+    
+    document.getElementById("payIdAmount").textContent = `$${booking ? booking.amountPaid : s.price}`;
+    
+    if (qty > 1) {
+      document.getElementById("payIdBulkInfo").textContent = `${qty} sessions · ${discount}% discount`;
+    } else {
+      document.getElementById("payIdBulkInfo").textContent = '';
+    }
     document.getElementById("payIdRef").textContent = buildRef(s, platform.currentUser);
     document.getElementById("payIdPhone").textContent = platform.payId.phone;
     document.getElementById("payIdName").textContent = platform.payId.name;
@@ -3808,6 +3842,210 @@
 </script>
 
 
+
+
+
+
+  let bulkBookingQty = 1; // Default to single session
+
+  function selectBulkQty(qty) {
+    bulkBookingQty = qty;
+    
+    // Update button styles
+    [1, 5, 10].forEach(q => {
+      const btn = document.getElementById('bulkBtn' + q);
+      if (btn) {
+        if (q === qty) {
+          btn.style.background = 'var(--green)';
+          btn.style.color = 'var(--black)';
+          btn.style.borderColor = 'var(--green)';
+        } else {
+          btn.style.background = 'white';
+          btn.style.color = 'var(--text-mid)';
+          btn.style.borderColor = 'var(--border)';
+        }
+      }
+    });
+    
+    // Update prices
+    const session = platform.platformSessions.find(s => s.id === platform.bookingSessionId);
+    if (!session) return;
+    
+    const basePrice = session.price;
+    const totalBase = basePrice * qty;
+    let discount = 0;
+    if (qty === 5) discount = 0.05;
+    if (qty === 10) discount = 0.10;
+    const finalPrice = Math.round(totalBase * (1 - discount));
+    
+    document.getElementById('bookModalPrice').textContent = '$' + finalPrice;
+    
+    if (qty > 1) {
+      document.getElementById('bulkQtyLabel').textContent = '(' + qty + ' sessions)';
+      document.getElementById('bulkOriginalPrice').textContent = '$' + totalBase;
+      document.getElementById('bulkOriginalPrice').style.display = 'block';
+    } else {
+      document.getElementById('bulkQtyLabel').textContent = '';
+      document.getElementById('bulkOriginalPrice').style.display = 'none';
+    }
+  }
+
+  function openPlayerProfile() {
+    if (!platform.currentUser) return;
+    
+    // Load current user data
+    document.getElementById('profileName').value = platform.currentUser.name || '';
+    document.getElementById('profileEmail').value = platform.currentUser.email || '';
+    document.getElementById('profilePhone').value = platform.currentUser.phone || '';
+    document.getElementById('profileGender').value = platform.currentUser.gender || '';
+    document.getElementById('profileDOB').value = platform.currentUser.dob || '';
+    document.getElementById('profileEmergencyName').value = platform.currentUser.emergencyName || '';
+    document.getElementById('profileEmergencyPhone').value = platform.currentUser.emergencyPhone || '';
+    document.getElementById('profileMedical').value = platform.currentUser.medicalNotes || '';
+    
+    document.getElementById('profileSuccess').style.display = 'none';
+    document.getElementById('playerProfileModal').classList.add('open');
+  }
+
+  function closePlayerProfile() {
+    document.getElementById('playerProfileModal').classList.remove('open');
+  }
+
+  async function savePlayerProfile() {
+    const name = document.getElementById('profileName').value.trim();
+    const phone = document.getElementById('profilePhone').value.trim();
+    const gender = document.getElementById('profileGender').value;
+    const dob = document.getElementById('profileDOB').value;
+    const emergencyName = document.getElementById('profileEmergencyName').value.trim();
+    const emergencyPhone = document.getElementById('profileEmergencyPhone').value.trim();
+    const medicalNotes = document.getElementById('profileMedical').value.trim();
+    
+    if (!name || !phone) {
+      showAppToast('Please fill in name and phone');
+      return;
+    }
+    
+    // Update in database
+    try {
+      const { error } = await sb.from('users').update({
+        name,
+        phone,
+        gender: gender || null,
+        dob: dob || null,
+        emergency_contact_name: emergencyName || null,
+        emergency_contact_phone: emergencyPhone || null,
+        medical_notes: medicalNotes || null
+      }).eq('id', platform.currentUser.id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      platform.currentUser.name = name;
+      platform.currentUser.phone = phone;
+      platform.currentUser.gender = gender;
+      platform.currentUser.dob = dob;
+      platform.currentUser.emergencyName = emergencyName;
+      platform.currentUser.emergencyPhone = emergencyPhone;
+      platform.currentUser.medicalNotes = medicalNotes;
+      
+      // Update display
+      document.getElementById('appUserName').textContent = name.split(' ')[0];
+      
+      document.getElementById('profileSuccess').style.display = 'block';
+      showAppToast('✓ Profile updated!');
+      
+      setTimeout(() => {
+        document.getElementById('profileSuccess').style.display = 'none';
+      }, 2000);
+    } catch (e) {
+      console.error('Profile update error:', e);
+      showAppToast('Failed to update profile');
+    }
+  }
+
+  let currentRatingSessionId = null;
+  let currentRatingValue = 0;
+
+  function openRatingModal(sessionId) {
+    const session = platform.platformSessions.find(s => s.id === sessionId);
+    if (!session) return;
+    
+    currentRatingSessionId = sessionId;
+    currentRatingValue = 0;
+    
+    document.getElementById('ratingSessionInfo').textContent = `${session.venue} · ${formatSessionDate(session.startsAt, session.date)} · ${session.time}`;
+    document.getElementById('ratingComment').value = '';
+    document.getElementById('ratingSuccess').style.display = 'none';
+    document.getElementById('ratingBtn').style.display = 'block';
+    
+    // Reset stars
+    document.querySelectorAll('#starRating .star').forEach(s => {
+      s.textContent = '☆';
+      s.style.color = '#888';
+    });
+    
+    document.getElementById('ratingModal').classList.add('open');
+  }
+
+  function closeRatingModal() {
+    document.getElementById('ratingModal').classList.remove('open');
+  }
+
+  function setRating(stars) {
+    currentRatingValue = stars;
+    const starElements = document.querySelectorAll('#starRating .star');
+    starElements.forEach((star, i) => {
+      if (i < stars) {
+        star.textContent = '★';
+        star.style.color = '#FFB800';
+      } else {
+        star.textContent = '☆';
+        star.style.color = '#888';
+      }
+    });
+  }
+
+  async function submitRating() {
+    if (currentRatingValue === 0) {
+      showAppToast('Please select a star rating');
+      return;
+    }
+    
+    const comment = document.getElementById('ratingComment').value.trim();
+    
+    // Save rating to Supabase
+    try {
+      await sb.from('ratings').insert({
+        session_id: currentRatingSessionId,
+        user_id: platform.currentUser.id,
+        rating: currentRatingValue,
+        comment: comment || null
+      });
+      
+      document.getElementById('ratingSuccess').style.display = 'block';
+      document.getElementById('ratingBtn').style.display = 'none';
+      
+      setTimeout(() => {
+        closeRatingModal();
+      }, 1500);
+      
+      showAppToast('✓ Rating submitted!');
+    } catch (e) {
+      console.error('Rating error:', e);
+      showAppToast('Failed to submit rating');
+    }
+  }
+
+  function copyPayIdRef() {
+    const ref = document.getElementById('payIdRef').textContent;
+    navigator.clipboard.writeText(ref).then(() => {
+      showAppToast('✓ Reference copied!');
+    }).catch(err => {
+      console.error('Copy failed:', err);
+      showAppToast('Copy failed - please select and copy manually');
+    });
+  }
+
 <!-- ============ AUTH MODAL ============ -->
 <div class="auth-overlay" id="authOverlay">
   <div class="auth-card">
@@ -3910,6 +4148,7 @@
         <div class="app-avatar" id="appUserAvatar">?</div>
         <span id="appUserName">User</span>
       </div>
+      <button class="btn-small ghost" onclick="openPlayerProfile()" style="padding:6px 12px; font-size:12px;">⚙️ Edit profile</button>
       <button class="app-logout" onclick="logout()">Log out</button>
     </div>
   </nav>
@@ -3954,6 +4193,7 @@
         <div class="app-avatar" style="background:var(--black); color:var(--green);">V</div>
         <span>Vishal Singh Lather</span>
       </div>
+      <button class="btn-small ghost" onclick="openPlayerProfile()" style="padding:6px 12px; font-size:12px;">⚙️ Edit profile</button>
       <button class="app-logout" onclick="logout()">Log out</button>
     </div>
   </nav>
@@ -4013,6 +4253,22 @@
     <div style="display:flex; justify-content:space-between; padding:16px 0 6px; margin-top:8px; border-top:1.5px solid var(--border);">
       <span style="font-weight:700;">Total</span>
       <span style="font-family:var(--font-display); font-size:24px; font-weight:800;" id="bookModalPrice">$0</span>
+    </div>
+    <div style="background:var(--green-light); border-radius:12px; padding:14px; margin-top:16px;">
+      <div style="font-size:12px; font-weight:600; color:var(--green-dark); margin-bottom:10px;">💰 BULK BOOKING DISCOUNTS</div>
+      <div style="font-size:11px; color:var(--text-mid); margin-bottom:12px;">Book multiple sessions and save!</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn-small ghost" onclick="selectBulkQty(1)" id="bulkBtn1" style="flex:1; min-width:60px; padding:8px;">1 session</button>
+        <button class="btn-small ghost" onclick="selectBulkQty(5)" id="bulkBtn5" style="flex:1; min-width:100px; padding:8px;">5 sessions<br><span style="font-size:10px; color:var(--green-dark);">Save 5%</span></button>
+        <button class="btn-small ghost" onclick="selectBulkQty(10)" id="bulkBtn10" style="flex:1; min-width:100px; padding:8px;">10 sessions<br><span style="font-size:10px; color:var(--green-dark);">Save 10%</span></button>
+      </div>
+    </div>
+    <div style="display:flex; justify-content:space-between; padding:16px 0 6px; margin-top:12px; border-top:1.5px solid var(--border);">
+      <span style="font-weight:700;">Total <span id="bulkQtyLabel"></span></span>
+      <div style="text-align:right;">
+        <div id="bulkOriginalPrice" style="font-size:12px; color:var(--text-muted); text-decoration:line-through; margin-bottom:2px;"></div>
+        <span style="font-family:var(--font-display); font-size:24px; font-weight:800;" id="bookModalPrice">$0</span>
+      </div>
     </div>
     <div style="display:flex; gap:8px; margin-top:16px;">
       <button class="btn-small ghost" onclick="closeBookModal()" style="flex:1;">Cancel</button>
@@ -4205,11 +4461,17 @@
       </div>
       <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #FFE5A3;">
         <span style="font-size:12px; color:var(--text-muted);">Amount</span>
-        <strong id="payIdAmount" style="font-family:var(--font-display); font-size:18px; font-weight:800;"></strong>
+        <div style="text-align:right;">
+          <div id="payIdBulkInfo" style="font-size:10px; color:var(--green-dark); margin-bottom:2px;"></div>
+          <strong id="payIdAmount" style="font-family:var(--font-display); font-size:18px; font-weight:800;"></strong>
+        </div>
       </div>
       <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0;">
         <span style="font-size:12px; color:var(--text-muted);">Reference</span>
-        <code id="payIdRef" style="font-size:12px; background:white; padding:3px 8px; border-radius:6px; border:1px solid #FFE5A3;"></code>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <code id="payIdRef" style="font-size:12px; background:white; padding:3px 8px; border-radius:6px; border:1px solid #FFE5A3; flex:1;"></code>
+          <button onclick="copyPayIdRef()" style="background:var(--green); color:var(--black); border:none; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap;">📋 Copy</button>
+        </div>
       </div>
       <div style="background:rgba(139,111,0,0.08); border-radius:8px; padding:10px; margin-top:12px; font-size:11px; color:#8B6F00; line-height:1.5;">
         <strong>Please include the reference</strong> in the payment description so Vishal Singh Lather can match your payment.
@@ -4281,6 +4543,90 @@
     <div style="text-align:center; margin-top:12px; font-size:12px; color:var(--text-muted);">
       Or email directly: <a href="mailto:getcourtupbookings@gmail.com" style="color:var(--green-dark); font-weight:600;">getcourtupbookings@gmail.com</a>
     </div>
+  </div>
+</div>
+
+
+
+<!-- Player Profile Modal -->
+<div class="auth-overlay" id="playerProfileModal">
+  <div class="auth-card" style="max-width:480px;">
+    <button class="auth-close" onclick="closePlayerProfile()">✕</button>
+    <h3 class="auth-title">Your profile</h3>
+    <p class="auth-sub-small">Update your personal information</p>
+    
+    <label class="auth-label">Full name</label>
+    <input type="text" class="auth-input" id="profileName" placeholder="Jane Smith">
+    
+    <label class="auth-label">Email</label>
+    <input type="email" class="auth-input" id="profileEmail" placeholder="you@example.com" disabled style="opacity:0.6; cursor:not-allowed;">
+    <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Email cannot be changed</div>
+    
+    <label class="auth-label">Phone</label>
+    <input type="tel" class="auth-input" id="profilePhone" placeholder="04XX XXX XXX">
+    
+    <div class="form-grid">
+      <div>
+        <label class="auth-label">Gender</label>
+        <select class="auth-input" id="profileGender">
+          <option value="">Prefer not to say</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="auth-label">Date of birth</label>
+        <input type="date" class="auth-input" id="profileDOB">
+      </div>
+    </div>
+    
+    <label class="auth-label">Emergency contact name</label>
+    <input type="text" class="auth-input" id="profileEmergencyName" placeholder="Name">
+    
+    <label class="auth-label">Emergency contact phone</label>
+    <input type="tel" class="auth-input" id="profileEmergencyPhone" placeholder="04XX XXX XXX">
+    
+    <label class="auth-label">Medical conditions / notes (optional)</label>
+    <textarea class="auth-input" id="profileMedical" rows="3" placeholder="Any medical conditions, injuries, or allergies we should know about..." style="resize:vertical;"></textarea>
+    
+    <div id="profileSuccess" style="display:none; background:#E8FFF6; color:#00A878; padding:12px; border-radius:8px; font-size:13px; margin-top:12px; border:1px solid #00C896; text-align:center;">
+      ✓ Profile updated!
+    </div>
+    
+    <button class="auth-btn green" onclick="savePlayerProfile()" style="margin-top:16px;">Save changes →</button>
+  </div>
+</div>
+
+<!-- Session Rating Modal -->
+<div class="auth-overlay" id="ratingModal">
+  <div class="auth-card" style="max-width:460px;">
+    <button class="auth-close" onclick="closeRatingModal()">✕</button>
+    <div style="text-align:center; margin-bottom:20px;">
+      <div style="width:56px; height:56px; background:var(--green-light); border-radius:50%; margin:0 auto 14px; display:flex; align-items:center; justify-content:center; font-size:26px;">⭐</div>
+      <h3 class="auth-title" style="text-align:center;">Rate this session</h3>
+      <p class="auth-sub-small" style="text-align:center;" id="ratingSessionInfo"></p>
+    </div>
+    
+    <div style="margin-bottom:20px;">
+      <label class="auth-label">How was your experience?</label>
+      <div style="display:flex; justify-content:center; gap:12px; margin-top:10px;" id="starRating">
+        <span class="star" onclick="setRating(1)" style="font-size:36px; cursor:pointer; transition:all 0.2s;">☆</span>
+        <span class="star" onclick="setRating(2)" style="font-size:36px; cursor:pointer; transition:all 0.2s;">☆</span>
+        <span class="star" onclick="setRating(3)" style="font-size:36px; cursor:pointer; transition:all 0.2s;">☆</span>
+        <span class="star" onclick="setRating(4)" style="font-size:36px; cursor:pointer; transition:all 0.2s;">☆</span>
+        <span class="star" onclick="setRating(5)" style="font-size:36px; cursor:pointer; transition:all 0.2s;">☆</span>
+      </div>
+    </div>
+    
+    <label class="auth-label">Comments (optional)</label>
+    <textarea class="auth-input" id="ratingComment" rows="4" placeholder="Share your feedback about the session..." style="resize:vertical; line-height:1.5;"></textarea>
+    
+    <div id="ratingSuccess" style="display:none; background:#E8FFF6; color:#00A878; padding:12px; border-radius:8px; font-size:13px; margin-top:12px; border:1px solid #00C896; text-align:center;">
+      ✓ Thanks for your feedback!
+    </div>
+    
+    <button class="auth-btn green" onclick="submitRating()" id="ratingBtn" style="margin-top:16px;">Submit rating →</button>
   </div>
 </div>
 
