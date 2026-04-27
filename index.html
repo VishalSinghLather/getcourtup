@@ -10,7 +10,53 @@
 <meta property="og:url" content="https://www.getcourtup.com.au">
 <meta property="og:type" content="website">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+
+  function openPlayerProfile() {
+    if (!platform.currentUser) {
+      console.error('No current user - cannot open profile');
+      showAppToast('Please log in first');
+      return;
+    }
+    
+    try {
+      // Load current user data
+      document.getElementById('profileName').value = platform.currentUser.name || '';
+      document.getElementById('profileEmail').value = platform.currentUser.email || '';
+      document.getElementById('profilePhone').value = platform.currentUser.phone || '';
+      document.getElementById('profileGender').value = platform.currentUser.gender || '';
+      document.getElementById('profileDOB').value = platform.currentUser.dob || '';
+      document.getElementById('profileEmergencyName').value = platform.currentUser.emergencyName || '';
+      document.getElementById('profileEmergencyPhone').value = platform.currentUser.emergencyPhone || '';
+      document.getElementById('profileMedical').value = platform.currentUser.medicalNotes || '';
+      
+      document.getElementById('profileSuccess').style.display = 'none';
+      document.getElementById('playerProfileModal').classList.add('open');
+    }
+
+  function closePlayerProfile() {
+    document.getElementById('playerProfileModal').classList.remove('open');
+  }
+
+  async function savePlayerProfile() {
+    const name = document.getElementById('profileName').value.trim();
+    const phone = document.getElementById('profilePhone').value.trim();
+    const gender = document.getElementById('profileGender').value;
+    const dob = document.getElementById('profileDOB').value;
+    const emergencyName = document.getElementById('profileEmergencyName').value.trim();
+    const emergencyPhone = document.getElementById('profileEmergencyPhone').value.trim();
+    const medicalNotes = document.getElementById('profileMedical').value.trim();
+    
+    if (!name || !phone) {
+      showAppToast('Please fill in name and phone');
+      return;
+    }
+    
+    // Update in database
+    try {
+      const { error }
+
+</script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4097,53 +4143,15 @@
     }
   }
 
-  function openPlayerProfile() {
-    if (!platform.currentUser) {
-      console.error('No current user - cannot open profile');
-      showAppToast('Please log in first');
-      return;
-    }
-    
-    try {
-      // Load current user data
-      document.getElementById('profileName').value = platform.currentUser.name || '';
-      document.getElementById('profileEmail').value = platform.currentUser.email || '';
-      document.getElementById('profilePhone').value = platform.currentUser.phone || '';
-      document.getElementById('profileGender').value = platform.currentUser.gender || '';
-      document.getElementById('profileDOB').value = platform.currentUser.dob || '';
-      document.getElementById('profileEmergencyName').value = platform.currentUser.emergencyName || '';
-      document.getElementById('profileEmergencyPhone').value = platform.currentUser.emergencyPhone || '';
-      document.getElementById('profileMedical').value = platform.currentUser.medicalNotes || '';
-      
-      document.getElementById('profileSuccess').style.display = 'none';
-      document.getElementById('playerProfileModal').classList.add('open');
-    } catch (e) {
+ catch (e) {
       console.error('Error opening player profile:', e);
       showAppToast('Error opening profile');
     }
   }
 
-  function closePlayerProfile() {
-    document.getElementById('playerProfileModal').classList.remove('open');
-  }
 
-  async function savePlayerProfile() {
-    const name = document.getElementById('profileName').value.trim();
-    const phone = document.getElementById('profilePhone').value.trim();
-    const gender = document.getElementById('profileGender').value;
-    const dob = document.getElementById('profileDOB').value;
-    const emergencyName = document.getElementById('profileEmergencyName').value.trim();
-    const emergencyPhone = document.getElementById('profileEmergencyPhone').value.trim();
-    const medicalNotes = document.getElementById('profileMedical').value.trim();
-    
-    if (!name || !phone) {
-      showAppToast('Please fill in name and phone');
-      return;
-    }
-    
-    // Update in database
-    try {
-      const { error } = await sb.from('users').update({
+
+ = await sb.from('users').update({
         name,
         phone,
         gender: gender || null,
@@ -4552,10 +4560,6 @@
     <h3 class="auth-title">Confirm booking</h3>
     <p class="auth-sub-small" id="bookModalVenue"></p>
     <div id="bookModalRows"></div>
-    <div style="display:flex; justify-content:space-between; padding:16px 0 6px; margin-top:8px; border-top:1.5px solid var(--border);">
-      <span style="font-weight:700;">Total</span>
-      <span style="font-family:var(--font-display); font-size:24px; font-weight:800;" id="bookModalPrice">$0</span>
-    </div>
     <div style="background:var(--green-light); border-radius:12px; padding:14px; margin-top:16px;">
       <div style="font-size:12px; font-weight:600; color:var(--green-dark); margin-bottom:10px;">💰 BULK BOOKING DISCOUNTS</div>
       <div style="font-size:11px; color:var(--text-mid); margin-bottom:12px;">Book multiple sessions and save!</div>
