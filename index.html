@@ -3342,7 +3342,17 @@
       const dateInfo = document.getElementById('bulkDateInfo');
       const dateRange = document.getElementById('bulkDateRange');
       if (dateInfo && dateRange) {
-        const sessionDate = new Date(session.date || session.startsAt);
+        // Parse the date properly
+        let sessionDate;
+        if (session.startsAt) {
+          sessionDate = new Date(session.startsAt);
+        } else if (session.date) {
+          sessionDate = new Date(session.date);
+        } else {
+          // Fallback to today if no date
+          sessionDate = new Date();
+        }
+        
         const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][sessionDate.getDay()];
         const startDateStr = sessionDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
         
@@ -4055,7 +4065,17 @@
       const dateInfo = document.getElementById('bulkDateInfo');
       const dateRange = document.getElementById('bulkDateRange');
       if (dateInfo && dateRange) {
-        const sessionDate = new Date(session.date || session.startsAt);
+        // Parse the date properly
+        let sessionDate;
+        if (session.startsAt) {
+          sessionDate = new Date(session.startsAt);
+        } else if (session.date) {
+          sessionDate = new Date(session.date);
+        } else {
+          // Fallback to today if no date
+          sessionDate = new Date();
+        }
+        
         const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][sessionDate.getDay()];
         const startDateStr = sessionDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
         
@@ -4078,20 +4098,29 @@
   }
 
   function openPlayerProfile() {
-    if (!platform.currentUser) return;
+    if (!platform.currentUser) {
+      console.error('No current user - cannot open profile');
+      showAppToast('Please log in first');
+      return;
+    }
     
-    // Load current user data
-    document.getElementById('profileName').value = platform.currentUser.name || '';
-    document.getElementById('profileEmail').value = platform.currentUser.email || '';
-    document.getElementById('profilePhone').value = platform.currentUser.phone || '';
-    document.getElementById('profileGender').value = platform.currentUser.gender || '';
-    document.getElementById('profileDOB').value = platform.currentUser.dob || '';
-    document.getElementById('profileEmergencyName').value = platform.currentUser.emergencyName || '';
-    document.getElementById('profileEmergencyPhone').value = platform.currentUser.emergencyPhone || '';
-    document.getElementById('profileMedical').value = platform.currentUser.medicalNotes || '';
-    
-    document.getElementById('profileSuccess').style.display = 'none';
-    document.getElementById('playerProfileModal').classList.add('open');
+    try {
+      // Load current user data
+      document.getElementById('profileName').value = platform.currentUser.name || '';
+      document.getElementById('profileEmail').value = platform.currentUser.email || '';
+      document.getElementById('profilePhone').value = platform.currentUser.phone || '';
+      document.getElementById('profileGender').value = platform.currentUser.gender || '';
+      document.getElementById('profileDOB').value = platform.currentUser.dob || '';
+      document.getElementById('profileEmergencyName').value = platform.currentUser.emergencyName || '';
+      document.getElementById('profileEmergencyPhone').value = platform.currentUser.emergencyPhone || '';
+      document.getElementById('profileMedical').value = platform.currentUser.medicalNotes || '';
+      
+      document.getElementById('profileSuccess').style.display = 'none';
+      document.getElementById('playerProfileModal').classList.add('open');
+    } catch (e) {
+      console.error('Error opening player profile:', e);
+      showAppToast('Error opening profile');
+    }
   }
 
   function closePlayerProfile() {
@@ -4467,7 +4496,6 @@
         <div class="app-avatar" style="background:var(--black); color:var(--green);">V</div>
         <span>Vishal Singh Lather</span>
       </div>
-      <button class="btn-small ghost" onclick="openPlayerProfile()" style="padding:6px 12px; font-size:12px;">⚙️ Edit profile</button>
       <button class="app-logout" onclick="logout()">Log out</button>
     </div>
   </nav>
