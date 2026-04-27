@@ -48,16 +48,11 @@
       return;
     }
 
-    // Update in database
+    // Update in database - only update columns that exist in users table
     try {
       const { error } = await sb.from('users').update({
         name,
-        phone,
-        gender,
-        dob,
-        emergency_name: emergencyName,
-        emergency_phone: emergencyPhone,
-        medical_notes: medicalNotes
+        phone
       }).eq('id', platform.currentUser.id);
 
       if (error) throw error;
@@ -3443,10 +3438,10 @@
     const s = platform.platformSessions.find(x => x.id === sid);
     if (!s) return;
     
-    // Check if user already has ANY booking (paid or unpaid) for this session
-    const existingBooking = (s.bookings || []).find(b => b.userId === platform.currentUser.id);
-    if (existingBooking || s.bookedUserIds.includes(platform.currentUser.id)) { 
-      showAppToast("You already have a booking for this session!"); 
+    // If user already has a booking, re-show their PayID info instead of blocking
+    const existingBooking = (s.bookings || []).find(b => b.userId === platform.currentUser.id && b.status !== 'cancelled' && b.status !== 'removed_by_manager');
+    if (existingBooking || s.bookedUserIds.includes(platform.currentUser.id)) {
+      reshowPayId(sid);
       return; 
     }
     
@@ -3650,9 +3645,9 @@
   function renderManagerStats() {
     const totalBookings = platform.platformSessions.reduce((acc, s) => acc + s.bookedUserIds.length, 0);
     
-    // Calculate revenue from PAID bookings only
+    // Calculate revenue from confirmed/paid/attended bookings
     const revenue = platform.platformSessions.reduce((acc, s) => {
-      const paidBookings = (s.bookings || []).filter(b => b.status === 'paid');
+      const paidBookings = (s.bookings || []).filter(b => b.status === 'paid' || b.status === 'confirmed' || b.status === 'attended');
       return acc + paidBookings.reduce((sum, b) => sum + (b.amountPaid || 0), 0);
     }, 0);
     
