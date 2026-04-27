@@ -2416,7 +2416,7 @@
     document.getElementById("coachPhotoStatus").style.display = "none";
     // Reset file input
     const photoInput = document.getElementById("coachPhotoInput");
-    if (input) input.value = "";
+    if (photoInput) photoInput.value = "";
     // Show current photo in preview
     const preview = document.getElementById("coachPhotoPreview");
     if (preview) {
@@ -2622,7 +2622,6 @@
     document.getElementById('videoEditorModal').classList.add('open');
 
     // Add live preview on input change
-    const videoInput = document.getElementById('vid1');
     if (videoInput) {
       videoInput.oninput = () => {
         const ytId = extractYouTubeId(videoInput.value);
