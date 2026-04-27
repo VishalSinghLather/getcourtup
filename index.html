@@ -1623,11 +1623,11 @@
               <div class="chip-sub">18+ · $45 · Weekends</div>
             </div>
           </div>
-          <div class="hero-chip coming" style="cursor:pointer;" onclick="openWaitlist('Intermediate')">
+          <div class="hero-chip active">
             <span class="chip-icon">🎯</span>
-            <div style="flex:1;">
+            <div>
               <div class="chip-title">Adult intermediate</div>
-              <div class="chip-sub">Coming soon · <span style="color:var(--green-dark); font-weight:600;">Notify me →</span></div>
+              <div class="chip-sub">Available now · Weekends</div>
             </div>
           </div>
           <div class="hero-chip coming" style="cursor:pointer;" onclick="openWaitlist('Advanced')">
@@ -1982,7 +1982,17 @@
     return '';
   }
 
-  function renderSessions() {
+  function clearAllFilters() {
+    console.log("Clearing all filters...");
+    activeFilters.types.clear();
+    activeFilters.days.clear();
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    const allBtn = document.querySelector('.filter-btn[onclick*="All"]');
+    if (allBtn) allBtn.classList.add("active");
+    renderSessions();
+  }
+
+    function renderSessions() {
     const grid = document.getElementById("sessions-grid");
     if (!grid) return;
     // Safely access platform (may be undefined before const declaration runs)
@@ -2083,7 +2093,7 @@
               : `<span class="badge" style="background:#FFF3EC;color:#CC4A10;border-color:#FF6B35;">Needs ${minToRun - numBooked} more to run</span>`}
           </div>
           <div class="session-players-row">
-            <div class="player-avatars">${avatars || '<span style="font-size:12px; color:var(--text-muted);">Be the first!</span>'}${emptyAv}</div>
+            <div class="player-avatars">${avatars || '<span style="font-size:12px; color:var(--text-muted);">Be the firstt!</span>'}${emptyAv}</div>
             <span class="spots-text ${spotsLeft === 0 ? 'full' : ''}">${spotsLeft === 0 ? "Full" : `${spotsLeft} spot${spotsLeft > 1 ? "s" : ""} left`}</span>
           </div>
           <div class="fill-bar-bg">
@@ -2533,14 +2543,31 @@
     const ext = file.name.split(".").pop().toLowerCase();
     const fileName = `coach-profile.${ext}`;
     try {
+      // First, try to remove the old file
+      try {
+        await sb.storage.from("coach-photos").remove([fileName]);
+      } catch (e) {
+        // Ignore errors if file doesn't exist
+      }
+      
+      // Upload the new file
       const { data, error } = await sb.storage
         .from("coach-photos")
         .upload(fileName, file, { upsert: true, contentType: file.type });
-      if (error) { console.error("Photo upload error:", error); return null; }
+      if (error) { 
+        console.error("Photo upload error:", error); 
+        showAppToast("Photo upload failed: " + error.message);
+        return null; 
+      }
+      
+      // Get the public URL
       const { data: urlData } = sb.storage.from("coach-photos").getPublicUrl(fileName);
-      return urlData.publicUrl + "?t=" + Date.now(); // cache bust
+      const photoUrl = urlData.publicUrl + "?t=" + Date.now(); // cache bust
+      console.log("Photo uploaded successfully:", photoUrl);
+      return photoUrl;
     } catch (e) {
       console.error("Upload failed:", e);
+      showAppToast("Photo upload error: " + e.message);
       return null;
     }
   }
@@ -3004,13 +3031,15 @@
   }
 
   function clearAppFilters() {
+    console.log("Clearing app filters...");
     if (!platform.appFilters) {
       platform.appFilters = { types: new Set(), days: new Set() };
     }
     platform.appFilters.types.clear();
     platform.appFilters.days.clear();
     document.querySelectorAll("#userApp .app-pill").forEach(b => b.classList.remove("active"));
-    document.querySelector('#userApp .app-pill[onclick*="All"]').classList.add("active");
+    const allBtn = document.querySelector('#userApp .app-pill[onclick*="All"]');
+    if (allBtn) allBtn.classList.add("active");
     renderAppUserSessions();
   }
 
@@ -3095,7 +3124,7 @@
             ${userBooked ? '<span class="badge badge-beg">✓ Booked</span>' : ''}
           </div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <div class="player-avatars">${avatars || '<span style="font-size:12px; color:var(--text-muted);">Be the first!</span>'}${emptyAv}</div>
+            <div class="player-avatars">${avatars || '<span style="font-size:12px; color:var(--text-muted);">Be the firstt!</span>'}${emptyAv}</div>
             <span class="spots-text ${spotsLeft === 0 ? 'full' : ''}">${spotsLeft === 0 ? "Full" : `${spotsLeft} left`}</span>
           </div>
           <div class="fill-bar-bg"><div class="fill-bar ${fill === 100 ? 'full' : ''}" style="width:${fill}%"></div></div>
