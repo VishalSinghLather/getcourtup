@@ -1610,7 +1610,7 @@
   <div class="hero-bg"></div>
   <div class="hero-grid">
     <div class="hero-content">
-      <div class="hero-eyebrow">Coaching in Sydney</div>
+      <div class="hero-eyebrow">Play · Improve · Connect</div>
       <h1>Get on court.<br>Get <em>better.</em><br>Get CourtUp.</h1>
       <p class="hero-sub">Sydney's badminton community. Find casual play, get coached, meet players who love the sport — all in one place.</p>
       <div class="hero-groups">
@@ -2039,7 +2039,7 @@
           <div style="font-size:15px; color:var(--text-muted); margin-bottom:24px;">
             ${filterDesc ? `We don't have any ${filterDesc} sessions right now.` : 'No sessions available right now.'}
           </div>
-          <button class="btn-primary" onclick="document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active')); document.querySelector('.filter-btn[onclick*=\'All\']').classList.add('active'); activeFilters.types.clear(); activeFilters.days.clear(); renderSessions();" style="font-size:14px; padding:12px 24px;">
+          <button class="btn-primary" onclick="clearAllFilters()" style="font-size:14px; padding:12px 24px;">
             Clear filters & show all
           </button>
         </div>`;
@@ -3002,6 +3002,18 @@
     
     renderAppUserSessions();
   }
+
+  function clearAppFilters() {
+    if (!platform.appFilters) {
+      platform.appFilters = { types: new Set(), days: new Set() };
+    }
+    platform.appFilters.types.clear();
+    platform.appFilters.days.clear();
+    document.querySelectorAll("#userApp .app-pill").forEach(b => b.classList.remove("active"));
+    document.querySelector('#userApp .app-pill[onclick*="All"]').classList.add("active");
+    renderAppUserSessions();
+  }
+
   function renderAppUserSessions() {
     const grid = document.getElementById("appUserSessionsGrid");
     if (!platform.appFilters) {
@@ -3047,7 +3059,7 @@
           <div style="font-size:14px; color:var(--text-muted); margin-bottom:20px;">
             ${filterDesc ? `We don't have any ${filterDesc} sessions yet.` : 'No sessions available right now.'}
           </div>
-          <button class="btn-small ghost" onclick="document.querySelectorAll('#userApp .app-pill').forEach(b => b.classList.remove('active')); document.querySelector('#userApp .app-pill[onclick*=\'All\']').classList.add('active'); platform.appFilters.types.clear(); platform.appFilters.days.clear(); renderAppUserSessions();">
+          <button class="btn-small ghost" onclick="clearAppFilters()">
             Clear filters
           </button>
         </div>`;
