@@ -1855,8 +1855,8 @@
   <div class="section-inner" style="max-width:1200px; margin:0 auto;">
 
     <div style="text-align:center; margin-bottom:56px;">
-      <div class="section-label">Your coach</div>
-      <h2 class="section-title">Coached by someone who <em style="font-style:normal; color:var(--green);">lives</em> the sport</h2>
+      <div class="section-label">Our coaches</div>
+      <h2 class="section-title">Learn from coaches who <em style="font-style:normal; color:var(--green);">live</em> the sport</h2>
     </div>
 
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:60px; align-items:start;">
@@ -1866,11 +1866,11 @@
         <div style="display:flex; align-items:center; gap:24px; margin-bottom:28px;">
           <div id="coachAvatar" style="width:120px; height:120px; border-radius:50%; background:linear-gradient(135deg, var(--green-light), var(--green)); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:42px; font-weight:800; font-family:var(--font-display); color:var(--black); overflow:hidden; box-shadow:0 4px 16px rgba(0,200,150,0.15);"></div>
           <div>
-            <div style="font-family:var(--font-display); font-size:26px; font-weight:800; letter-spacing:-0.5px;" id="coachName">Vish</div>
-            <div style="font-size:14px; color:var(--text-muted); margin-top:3px;">Head Coach · GetCourtUp</div>
+            <div style="font-family:var(--font-display); font-size:26px; font-weight:800; letter-spacing:-0.5px;" id="coachName">Vishal Singh Lather</div>
+            <div style="font-size:14px; color:var(--text-muted); margin-top:3px;">Head Coach</div>
           </div>
         </div>
-        <p style="font-size:17px; line-height:1.75; color:var(--text-mid); font-weight:300;" id="coachBio">Head coach at GetCourtUp. Badminton coach and coordinator with years of experience at Roketto and the National Badminton Centre. Passionate about helping adults discover badminton in a fun, supportive environment.</p>
+        <p style="font-size:17px; line-height:1.75; color:var(--text-mid); font-weight:300;" id="coachBio">National-level badminton player and coach with years of experience at Roketto and the National Badminton Centre. Passionate about helping adults discover badminton in a fun, supportive environment.</p>
 
         <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:28px;">
           <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:14px 18px; text-align:center; min-width:120px;">
@@ -1890,14 +1890,14 @@
           </div>
         </div>
 
-        <a href="#sessions" class="btn-primary green" style="margin-top:32px; display:inline-flex;">Book a session with Vish →</a>
+        <a href="#sessions" class="btn-primary green" style="margin-top:32px; display:inline-flex;">Book a session with Vishal Singh Lather →</a>
       </div>
 
       <!-- Right: Video carousel -->
       <div>
-        <div style="font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:14px;">Watch Vish play</div>
+        <div style="font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:14px;">Watch Vishal Singh Lather in action</div>
 
-        <!-- Active video -->
+        <!-- Single video -->
         <div style="border-radius:16px; overflow:hidden; aspect-ratio:9/16; max-height:480px; background:#000; position:relative;" id="coachVideoContainer">
           <iframe id="coachVideoFrame"
             src="https://www.youtube.com/embed/gAyK1spQUi0?rel=0&modestbranding=1&loop=1&playlist=gAyK1spQUi0"
@@ -1905,25 +1905,6 @@
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowfullscreen>
           </iframe>
-        </div>
-
-        <!-- Thumbnail switcher -->
-        <div class="thumb-row" style="display:flex; gap:10px; margin-top:12px;">
-          <button onclick="switchCoachVideo('gAyK1spQUi0', this)"
-            style="flex:1; aspect-ratio:9/16; max-height:100px; border-radius:10px; overflow:hidden; border:2.5px solid var(--green); cursor:pointer; background:#000; padding:0; position:relative;">
-            <img src="https://img.youtube.com/vi/gAyK1spQUi0/mqdefault.jpg" style="width:100%; height:100%; object-fit:cover; opacity:0.85;">
-            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:18px;">▶</div>
-          </button>
-          <button onclick="switchCoachVideo('ltyd9aZ_Qb8', this)"
-            style="flex:1; aspect-ratio:9/16; max-height:100px; border-radius:10px; overflow:hidden; border:2px solid var(--border); cursor:pointer; background:#000; padding:0; position:relative;">
-            <img src="https://img.youtube.com/vi/ltyd9aZ_Qb8/mqdefault.jpg" style="width:100%; height:100%; object-fit:cover; opacity:0.7;">
-            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:18px;">▶</div>
-          </button>
-          <button onclick="switchCoachVideo('aZ3jwOHg4BE', this)"
-            style="flex:1; aspect-ratio:9/16; max-height:100px; border-radius:10px; overflow:hidden; border:2px solid var(--border); cursor:pointer; background:#000; padding:0; position:relative;">
-            <img src="https://img.youtube.com/vi/aZ3jwOHg4BE/mqdefault.jpg" style="width:100%; height:100%; object-fit:cover; opacity:0.7;">
-            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:18px;">▶</div>
-          </button>
         </div>
       </div>
 
@@ -2270,7 +2251,7 @@
 
   const platform = {
     users: [], // populated from Supabase
-    manager: { email:"getcourtupbookings@gmail.com", password:"manager123", name:"Vish" },
+    manager: { email:"getcourtupbookings@gmail.com", password:"manager123", name:"Vishal Singh Lather" },
     platformSessions: [], // populated from Supabase
     currentUser: null,
     role: null,
@@ -2281,11 +2262,11 @@
     cancelingSessionId: null,
     payId: {
       phone: "0402 004 683",
-      name: "Vishal Singh Lather"
+      name: "Vishal Singh Latheral Singh Lather"
     },
     coachProfile: {
-      name: "Vish",
-      bio: "Head coach at GetCourtUp. Badminton coach and coordinator with years of experience at Roketto and the National Badminton Centre. Passionate about helping adults discover badminton in a fun, supportive environment.",
+      name: "Vishal Singh Lather",
+      bio: "National-level badminton player and coach with years of experience at Roketto and the National Badminton Centre. Passionate about helping adults discover badminton in a fun, supportive environment.",
       photo: null
     },
   };
@@ -2429,7 +2410,7 @@
 
   // ============ COACH PROFILE ============
   function openCoachEditor() {
-    document.getElementById("coachEditorName").value = platform.coachProfile.name || "Vish";
+    document.getElementById("coachEditorName").value = platform.coachProfile.name || "Vishal Singh Lather";
     document.getElementById("coachEditorBio").value = platform.coachProfile.bio || "";
     document.getElementById("coachEditorSuccess").style.display = "none";
     document.getElementById("coachPhotoStatus").style.display = "none";
@@ -2595,7 +2576,7 @@
       const { data } = await sb.from('settings').select('value').eq('key', 'coach_profile').maybeSingle();
       if (data && data.value) {
         const profile = JSON.parse(data.value);
-        platform.coachProfile.name = profile.name || "Vish";
+        platform.coachProfile.name = profile.name || "Vishal Singh Lather";
         platform.coachProfile.bio = profile.bio || platform.coachProfile.bio;
         if (profile.photoUrl) platform.coachProfile.photoUrl = profile.photoUrl;
         if (profile.videos && profile.videos.length > 0) {
@@ -2632,53 +2613,49 @@
   }
 
   function openVideoEditor() {
-    // Load current video IDs into the inputs
-    const vids = platform.coachProfile.videos || ['gAyK1spQUi0','ltyd9aZ_Qb8','aZ3jwOHg4BE'];
-    ['vid1','vid2','vid3'].forEach((id, i) => {
-      const input = document.getElementById(id);
-      if (input) input.value = vids[i] ? `https://youtube.com/shorts/${vids[i]}` : '';
-      document.getElementById(id + 'Preview').style.display = 'none';
-    });
+    // Load current video ID
+    const vids = platform.coachProfile.videos || ['gAyK1spQUi0'];
+    const input = document.getElementById('vid1');
+    if (input) input.value = vids[0] ? `https://youtube.com/shorts/${vids[0]}` : '';
+    document.getElementById('vid1Preview').style.display = 'none';
     document.getElementById('videoEditorSuccess').style.display = 'none';
     document.getElementById('videoEditorModal').classList.add('open');
 
     // Add live preview on input change
-    ['vid1','vid2','vid3'].forEach((id, i) => {
-      const input = document.getElementById(id);
+    const input = document.getElementById('vid1');
+    if (input) {
       input.oninput = () => {
         const ytId = extractYouTubeId(input.value);
-        const preview = document.getElementById(id + 'Preview');
-        const frame = document.getElementById(id + 'Frame');
+        const preview = document.getElementById('vid1Preview');
+        const frame = document.getElementById('vid1Frame');
         if (ytId) {
-          frame.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1`;
+          frame.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&loop=1&playlist=${ytId}`;
           preview.style.display = 'block';
         } else {
           preview.style.display = 'none';
           frame.src = '';
         }
       };
-    });
+    }
   }
 
   function closeVideoEditor() {
     document.getElementById('videoEditorModal').classList.remove('open');
-    // Stop any playing previews
-    ['vid1Frame','vid2Frame','vid3Frame'].forEach(id => {
-      const f = document.getElementById(id);
-      if (f) f.src = '';
-    });
+    // Stop playing preview
+    const frame = document.getElementById('vid1Frame');
+    if (frame) frame.src = '';
   }
 
   async function saveVideos() {
-    const ids = ['vid1','vid2','vid3'].map(id => {
-      const val = document.getElementById(id).value.trim();
-      return extractYouTubeId(val) || null;
-    }).filter(Boolean);
-
-    if (ids.length === 0) {
-      showAppToast("Please enter at least one valid YouTube link");
+    const val = document.getElementById('vid1').value.trim();
+    const videoId = extractYouTubeId(val);
+    
+    if (!videoId) {
+      showAppToast("Please enter a valid YouTube link");
       return;
     }
+    
+    const ids = [videoId];
 
     // Update in-memory state
     if (!platform.coachProfile) platform.coachProfile = {};
@@ -2690,7 +2667,7 @@
       await sb.from('settings').upsert({
         key: 'coach_profile',
         value: JSON.stringify({
-          name: existing.name || 'Vish',
+          name: existing.name || 'Vishal Singh Lather',
           bio: existing.bio || '',
           videos: ids
         })
@@ -2714,7 +2691,7 @@
     if (!ids || ids.length === 0) return;
     // Update main video frame
     const frame = document.getElementById('coachVideoFrame');
-    if (frame) frame.src = `https://www.youtube.com/embed/${ids[0]}?rel=0&modestbranding=1`;
+    if (frame) frame.src = `https://www.youtube.com/embed/${ids[0]}?rel=0&modestbranding=1&loop=1&playlist=${ids[0]}`;
     // Update thumbnails
     const thumbContainer = document.querySelector('#coach .thumb-row');
     if (thumbContainer) {
@@ -2737,7 +2714,7 @@
   function switchCoachVideo(videoId, btn) {
     // Update iframe src
     const frame = document.getElementById("coachVideoFrame");
-    if (frame) frame.src = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&autoplay=1`;
+    if (frame) frame.src = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&autoplay=1&loop=1&playlist=${videoId}`;
     // Update button borders
     const thumbs = btn.parentElement.querySelectorAll("button");
     thumbs.forEach(b => {
@@ -2865,7 +2842,7 @@
       });
       success.style.display = "block";
     } catch (e) {
-      err.textContent = "Failed to send email. Please contact Vish directly.";
+      err.textContent = "Failed to send email. Please contact Vishal Singh Lather directly.";
       err.classList.add("show");
     }
   }
@@ -3610,7 +3587,7 @@
     document.getElementById("sf_price").value = "45";
     document.getElementById("sf_minSpots").value = "2";
     document.getElementById("sf_spots").value = "5";
-    document.getElementById("sf_coach").value = platform.coachProfile.name || "Vish";
+    document.getElementById("sf_coach").value = platform.coachProfile.name || "Vishal Singh Lather";
     // Reset touched flags so type defaults apply
     ["sf_price","sf_minSpots","sf_spots"].forEach(id => {
       const el = document.getElementById(id);
@@ -3642,7 +3619,7 @@
     document.getElementById("sf_price").value = s.price;
     document.getElementById("sf_minSpots").value = s.minSpots || 2;
     document.getElementById("sf_spots").value = s.totalSpots;
-    document.getElementById("sf_coach").value = s.coach || "Vish";
+    document.getElementById("sf_coach").value = s.coach || "Vishal Singh Lather";
     // Mark fields as touched so changing type doesn't override existing values
     ["sf_price","sf_minSpots","sf_spots"].forEach(id => {
       const el = document.getElementById(id);
@@ -3729,7 +3706,7 @@
       price: data.price,
       min_spots: data.minSpots,
       total_spots: data.totalSpots,
-      coach: coachName || (sessionType === "social" ? "" : "Vish"),
+      coach: coachName || (sessionType === "social" ? "" : "Vishal Singh Lather"),
       session_type: sessionType
     };
 
@@ -3744,7 +3721,7 @@
       if (error) { showAppToast("Error: " + error.message); console.error(error); return; }
       platform.platformSessions.push({
         id: newSession.id, ...data,
-        coach: document.getElementById('sf_coach').value.trim() || (document.getElementById('sf_type').value === 'social' ? '' : 'Vish'),
+        coach: document.getElementById('sf_coach').value.trim() || (document.getElementById('sf_type').value === 'social' ? '' : 'Vishal Singh Lather'),
         sessionType: document.getElementById('sf_type').value,
         bookedUserIds: [], bookings: []
       });
@@ -3976,7 +3953,7 @@
       <span class="app-badge manager">Manager</span>
       <div class="app-user-chip">
         <div class="app-avatar" style="background:var(--black); color:var(--green);">V</div>
-        <span>Vish</span>
+        <span>Vishal Singh Lather</span>
       </div>
       <button class="app-logout" onclick="logout()">Log out</button>
     </div>
@@ -3997,8 +3974,8 @@
     <div style="background:white; border:1.5px solid var(--border); border-radius:14px; padding:18px; display:flex; align-items:center; gap:16px; margin-bottom:24px;">
       <div id="mgrCoachAvatar" style="width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg, var(--green-light), var(--green)); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:800; font-family:var(--font-display); color:var(--black); overflow:hidden;"></div>
       <div style="flex:1; min-width:0;">
-        <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Currently shown on public site</div>
-        <div id="mgrCoachName" style="font-family:var(--font-display); font-size:18px; font-weight:800; margin-top:2px;">Vish</div>
+        <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Coach profile preview</div>
+        <div id="mgrCoachName" style="font-family:var(--font-display); font-size:18px; font-weight:800; margin-top:2px;">Vishal Singh Lather</div>
         <div id="mgrCoachBioPreview" style="font-size:12px; color:var(--text-muted); margin-top:4px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">Loading...</div>
       </div>
       <button class="btn-small" style="background:var(--green); color:var(--black); flex-shrink:0;" onclick="openCoachEditor()">Edit</button>
@@ -4103,7 +4080,7 @@
       </div>
       <div class="form-grid-full" id="sf_coach_wrap">
         <label class="auth-label" id="sf_coach_label">Coach name</label>
-        <input type="text" class="auth-input" id="sf_coach" value="Vish" placeholder="Vish">
+        <input type="text" class="auth-input" id="sf_coach" value="Vishal Singh Lather" placeholder="Vishal Singh Lather">
         <div style="font-size:11px; color:var(--text-muted); margin-top:4px;" id="sf_coach_hint">For social sessions, this is the optional host. Leave as-is or change.</div>
       </div>
     </div>
@@ -4124,27 +4101,11 @@
     <h3 class="auth-title">Edit coach videos</h3>
     <p class="auth-sub-small">Paste YouTube links (regular or Shorts). These appear on your public profile page.</p>
 
-    <div style="display:flex; flex-direction:column; gap:14px; margin-top:4px;">
-      <div>
-        <label class="auth-label">Video 1 (shown first)</label>
-        <input type="text" class="auth-input" id="vid1" placeholder="https://youtube.com/shorts/abc123">
-        <div id="vid1Preview" style="margin-top:8px; border-radius:10px; overflow:hidden; display:none; aspect-ratio:16/9; background:#000;">
-          <iframe id="vid1Frame" style="width:100%; height:100%; border:none;" allowfullscreen></iframe>
-        </div>
-      </div>
-      <div>
-        <label class="auth-label">Video 2</label>
-        <input type="text" class="auth-input" id="vid2" placeholder="https://youtube.com/shorts/abc123">
-        <div id="vid2Preview" style="margin-top:8px; border-radius:10px; overflow:hidden; display:none; aspect-ratio:16/9; background:#000;">
-          <iframe id="vid2Frame" style="width:100%; height:100%; border:none;" allowfullscreen></iframe>
-        </div>
-      </div>
-      <div>
-        <label class="auth-label">Video 3</label>
-        <input type="text" class="auth-input" id="vid3" placeholder="https://youtube.com/shorts/abc123">
-        <div id="vid3Preview" style="margin-top:8px; border-radius:10px; overflow:hidden; display:none; aspect-ratio:16/9; background:#000;">
-          <iframe id="vid3Frame" style="width:100%; height:100%; border:none;" allowfullscreen></iframe>
-        </div>
+    <div style="margin-top:4px;">
+      <label class="auth-label">YouTube video URL</label>
+      <input type="text" class="auth-input" id="vid1" placeholder="https://youtube.com/shorts/abc123 or https://youtube.com/watch?v=abc123">
+      <div id="vid1Preview" style="margin-top:8px; border-radius:10px; overflow:hidden; display:none; aspect-ratio:16/9; background:#000;">
+        <iframe id="vid1Frame" style="width:100%; height:100%; border:none;" allowfullscreen></iframe>
       </div>
     </div>
 
@@ -4185,7 +4146,7 @@
     </div>
 
     <label class="auth-label">Coach name</label>
-    <input type="text" class="auth-input" id="coachEditorName" placeholder="Vish">
+    <input type="text" class="auth-input" id="coachEditorName" placeholder="Vishal Singh Lather">
     <label class="auth-label">Bio</label>
     <textarea class="auth-input" id="coachEditorBio" rows="5" placeholder="Tell players about yourself..." style="resize:vertical; line-height:1.5;"></textarea>
     <div id="coachEditorSuccess" style="display:none; background:#E8FFF6; color:#00A878; padding:10px 12px; border-radius:8px; font-size:13px; margin-top:12px; border:1px solid #00C896;">
@@ -4252,7 +4213,7 @@
         <code id="payIdRef" style="font-size:12px; background:white; padding:3px 8px; border-radius:6px; border:1px solid #FFE5A3;"></code>
       </div>
       <div style="background:rgba(139,111,0,0.08); border-radius:8px; padding:10px; margin-top:12px; font-size:11px; color:#8B6F00; line-height:1.5;">
-        <strong>Please include the reference</strong> in the payment description so Vish can match your payment.
+        <strong>Please include the reference</strong> in the payment description so Vishal Singh Lather can match your payment.
       </div>
     </div>
     <div style="background:var(--surface); border-radius:12px; padding:14px; margin-bottom:16px;">
@@ -4305,7 +4266,7 @@
     <div style="text-align:center; margin-bottom:20px;">
       <div style="width:56px; height:56px; background:var(--green-light); border-radius:50%; margin:0 auto 14px; display:flex; align-items:center; justify-content:center; font-size:26px;">💬</div>
       <h3 class="auth-title" style="text-align:center;">Need help?</h3>
-      <p class="auth-sub-small" style="text-align:center;">Send Vish a message and he'll get back to you soon.</p>
+      <p class="auth-sub-small" style="text-align:center;">Send Vishal Singh Lather a message and he'll get back to you soon.</p>
     </div>
     <label class="auth-label">Your name</label>
     <input type="text" class="auth-input" id="supportName" placeholder="Jane Smith">
@@ -4315,7 +4276,7 @@
     <textarea class="auth-input" id="supportMessage" rows="5" placeholder="Describe your issue or question..." style="resize:vertical; line-height:1.5;"></textarea>
     <div class="auth-error" id="supportError"></div>
     <div id="supportSuccess" style="display:none; background:#E8FFF6; color:#00A878; padding:12px; border-radius:8px; font-size:13px; margin-top:12px; border:1px solid #00C896; text-align:center;">
-      ✓ Message sent! Vish will reply within 24 hours.
+      ✓ Message sent! Vishal Singh Lather will reply within 24 hours.
     </div>
     <button class="auth-btn green" onclick="submitSupportMessage()" id="supportBtn" style="margin-top:16px;">Send message →</button>
     <div style="text-align:center; margin-top:12px; font-size:12px; color:var(--text-muted);">
