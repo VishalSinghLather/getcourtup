@@ -3191,6 +3191,50 @@
       }).join("")
     }</div>`;
   }
+  let bulkBookingQty = 1; // Default to single session
+
+  function selectBulkQty(qty) {
+    bulkBookingQty = qty;
+    
+    // Update button styles
+    [1, 5, 10].forEach(q => {
+      const btn = document.getElementById('bulkBtn' + q);
+      if (btn) {
+        if (q === qty) {
+          btn.style.background = 'var(--green)';
+          btn.style.color = 'var(--black)';
+          btn.style.borderColor = 'var(--green)';
+        } else {
+          btn.style.background = 'white';
+          btn.style.color = 'var(--text-mid)';
+          btn.style.borderColor = 'var(--border)';
+        }
+      }
+    });
+    
+    // Update prices
+    const session = platform.platformSessions.find(s => s.id === platform.bookingSessionId);
+    if (!session) return;
+    
+    const basePrice = session.price;
+    const totalBase = basePrice * qty;
+    let discount = 0;
+    if (qty === 5) discount = 0.05;
+    if (qty === 10) discount = 0.10;
+    const finalPrice = Math.round(totalBase * (1 - discount));
+    
+    document.getElementById('bookModalPrice').textContent = '$' + finalPrice;
+    
+    if (qty > 1) {
+      document.getElementById('bulkQtyLabel').textContent = '(' + qty + ' sessions)';
+      document.getElementById('bulkOriginalPrice').textContent = '$' + totalBase;
+      document.getElementById('bulkOriginalPrice').style.display = 'block';
+    } else {
+      document.getElementById('bulkQtyLabel').textContent = '';
+      document.getElementById('bulkOriginalPrice').style.display = 'none';
+    }
+  }
+
   function openAppBook(sid) {
     const s = platform.platformSessions.find(x => x.id === sid);
     if (!s) return;
@@ -3846,20 +3890,7 @@
 
 
 
-  let bulkBookingQty = 1; // Default to single session
-
-  function selectBulkQty(qty) {
-    bulkBookingQty = qty;
-    
-    // Update button styles
-    [1, 5, 10].forEach(q => {
-      const btn = document.getElementById('bulkBtn' + q);
-      if (btn) {
-        if (q === qty) {
-          btn.style.background = 'var(--green)';
-          btn.style.color = 'var(--black)';
-          btn.style.borderColor = 'var(--green)';
-        } else {
+ else {
           btn.style.background = 'white';
           btn.style.color = 'var(--text-mid)';
           btn.style.borderColor = 'var(--border)';
