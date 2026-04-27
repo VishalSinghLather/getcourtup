@@ -10,29 +10,25 @@
 <meta property="og:url" content="https://www.getcourtup.com.au">
 <meta property="og:type" content="website">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
   function openPlayerProfile() {
     if (!platform.currentUser) {
-      console.error('No current user - cannot open profile');
       showAppToast('Please log in first');
       return;
     }
-    
-    try {
-      // Load current user data
-      document.getElementById('profileName').value = platform.currentUser.name || '';
-      document.getElementById('profileEmail').value = platform.currentUser.email || '';
-      document.getElementById('profilePhone').value = platform.currentUser.phone || '';
-      document.getElementById('profileGender').value = platform.currentUser.gender || '';
-      document.getElementById('profileDOB').value = platform.currentUser.dob || '';
-      document.getElementById('profileEmergencyName').value = platform.currentUser.emergencyName || '';
-      document.getElementById('profileEmergencyPhone').value = platform.currentUser.emergencyPhone || '';
-      document.getElementById('profileMedical').value = platform.currentUser.medicalNotes || '';
-      
-      document.getElementById('profileSuccess').style.display = 'none';
-      document.getElementById('playerProfileModal').classList.add('open');
-    }
+    // Load current user data into form fields
+    document.getElementById('profileName').value = platform.currentUser.name || '';
+    document.getElementById('profileEmail').value = platform.currentUser.email || '';
+    document.getElementById('profilePhone').value = platform.currentUser.phone || '';
+    document.getElementById('profileGender').value = platform.currentUser.gender || '';
+    document.getElementById('profileDOB').value = platform.currentUser.dob || '';
+    document.getElementById('profileEmergencyName').value = platform.currentUser.emergencyName || '';
+    document.getElementById('profileEmergencyPhone').value = platform.currentUser.emergencyPhone || '';
+    document.getElementById('profileMedical').value = platform.currentUser.medicalNotes || '';
+    document.getElementById('profileSuccess').style.display = 'none';
+    document.getElementById('playerProfileModal').classList.add('open');
+  }
 
   function closePlayerProfile() {
     document.getElementById('playerProfileModal').classList.remove('open');
@@ -46,16 +42,39 @@
     const emergencyName = document.getElementById('profileEmergencyName').value.trim();
     const emergencyPhone = document.getElementById('profileEmergencyPhone').value.trim();
     const medicalNotes = document.getElementById('profileMedical').value.trim();
-    
+
     if (!name || !phone) {
       showAppToast('Please fill in name and phone');
       return;
     }
-    
+
     // Update in database
     try {
-      const { error }
+      const { error } = await sb.from('users').update({
+        name,
+        phone,
+        gender,
+        dob,
+        emergency_name: emergencyName,
+        emergency_phone: emergencyPhone,
+        medical_notes: medicalNotes
+      }).eq('id', platform.currentUser.id);
 
+      if (error) throw error;
+
+      // Update local state
+      platform.currentUser = {
+        ...platform.currentUser,
+        name, phone, gender, dob,
+        emergencyName, emergencyPhone, medicalNotes
+      };
+
+      document.getElementById('profileSuccess').style.display = 'block';
+      setTimeout(closePlayerProfile, 1500);
+    } catch(e) {
+      showAppToast('Error saving profile: ' + (e.message || 'please try again'));
+    }
+  }
 </script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -3423,7 +3442,14 @@
   function openAppBook(sid) {
     const s = platform.platformSessions.find(x => x.id === sid);
     if (!s) return;
-    if (s.bookedUserIds.includes(platform.currentUser.id)) { showAppToast("You're already booked ✓"); return; }
+    
+    // Check if user already has ANY booking (paid or unpaid) for this session
+    const existingBooking = (s.bookings || []).find(b => b.userId === platform.currentUser.id);
+    if (existingBooking || s.bookedUserIds.includes(platform.currentUser.id)) { 
+      showAppToast("You already have a booking for this session!"); 
+      return; 
+    }
+    
     if (s.bookedUserIds.length >= s.totalSpots) { showAppToast("This session is full"); return; }
     platform.bookingSessionId = sid;
     bulkBookingQty = 1; // Reset to single session
@@ -3490,7 +3516,12 @@
     }).select().single();
 
     if (error) {
-      showAppToast("Booking failed: " + (error.message || "please try again"));
+      // Check for duplicate booking error
+      if (error.code === '23505' || error.message.includes('duplicate key')) {
+        showAppToast("You already have a booking for this session!");
+      } else {
+        showAppToast("Booking failed: " + (error.message || "please try again"));
+      }
       console.error("BOOKING ERROR:", error);
       return;
     }
@@ -4581,7 +4612,7 @@
     </div>
     <div style="display:flex; gap:8px; margin-top:16px;">
       <button class="btn-small ghost" onclick="closeBookModal()" style="flex:1;">Cancel</button>
-      <button class="btn-small green" onclick="confirmAppBooking()" style="flex:1;">Pay & book →</button>
+      <button class="btn-small green" id="payBookBtn" onclick="this.disabled=true; this.textContent='Booking…'; confirmAppBooking().finally(()=>{ this.disabled=false; this.textContent='Pay & book →'; })" style="flex:1;">Pay & book →</button>
     </div>
   </div>
 </div>
