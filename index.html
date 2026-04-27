@@ -2005,7 +2005,44 @@
       list = list.filter(s => activeFilters.days.has(s.date));
     }
     if (list.length === 0) {
-      grid.innerHTML = `<div style="grid-column:1/-1; padding:40px; text-align:center; color:var(--text-muted);">No ${filter} sessions available right now. <br>Check back soon!</div>`;
+      // Build filter description
+      const activeTypes = Array.from(activeFilters.types);
+      const activeDays = Array.from(activeFilters.days);
+      let filterDesc = '';
+      
+      if (activeTypes.length > 0 && activeDays.length > 0) {
+        const typeNames = activeTypes.map(t => {
+          if (t === 'social') return 'social play';
+          if (t === 'group') return 'group coaching';
+          if (t === 'private') return 'private coaching';
+          return t;
+        });
+        filterDesc = `${typeNames.join(' or ')} on ${activeDays.join(' or ')}`;
+      } else if (activeTypes.length > 0) {
+        const typeNames = activeTypes.map(t => {
+          if (t === 'social') return 'social play';
+          if (t === 'group') return 'group coaching';
+          if (t === 'private') return 'private coaching';
+          return t;
+        });
+        filterDesc = typeNames.join(' or ');
+      } else if (activeDays.length > 0) {
+        filterDesc = activeDays.join(' or ');
+      }
+      
+      grid.innerHTML = `
+        <div style="grid-column:1/-1; padding:60px 20px; text-align:center;">
+          <div style="font-size:48px; margin-bottom:16px; opacity:0.3;">🏸</div>
+          <div style="font-family:var(--font-display); font-size:22px; font-weight:700; margin-bottom:8px; color:var(--black);">
+            No sessions found
+          </div>
+          <div style="font-size:15px; color:var(--text-muted); margin-bottom:24px;">
+            ${filterDesc ? `We don't have any ${filterDesc} sessions right now.` : 'No sessions available right now.'}
+          </div>
+          <button class="btn-primary" onclick="document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active')); document.querySelector('.filter-btn[onclick*=\'All\']').classList.add('active'); activeFilters.types.clear(); activeFilters.days.clear(); renderSessions();" style="font-size:14px; padding:12px 24px;">
+            Clear filters & show all
+          </button>
+        </div>`;
       return;
     }
     const dateFmt = (s) => (typeof formatSessionDate === 'function') ? formatSessionDate(s.startsAt, s.date) : s.date;
@@ -2979,7 +3016,41 @@
       list = list.filter(s => platform.appFilters.days.has(s.date));
     }
     if (list.length === 0) {
-      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">🏸</div>No sessions in this category yet.</div>';
+      const activeTypes = platform.appFilters ? Array.from(platform.appFilters.types) : [];
+      const activeDays = platform.appFilters ? Array.from(platform.appFilters.days) : [];
+      let filterDesc = '';
+      
+      if (activeTypes.length > 0 && activeDays.length > 0) {
+        const typeNames = activeTypes.map(t => {
+          if (t === 'social') return 'social play';
+          if (t === 'group') return 'group coaching';
+          if (t === 'private') return 'private coaching';
+          return t;
+        });
+        filterDesc = `${typeNames.join(' or ')} on ${activeDays.join(' or ')}`;
+      } else if (activeTypes.length > 0) {
+        const typeNames = activeTypes.map(t => {
+          if (t === 'social') return 'social play';
+          if (t === 'group') return 'group coaching';
+          if (t === 'private') return 'private coaching';
+          return t;
+        });
+        filterDesc = typeNames.join(' or ');
+      } else if (activeDays.length > 0) {
+        filterDesc = activeDays.join(' or ');
+      }
+      
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1; padding:50px 20px;">
+          <div class="empty-state-icon">🏸</div>
+          <div style="font-family:var(--font-display); font-size:20px; font-weight:700; margin-bottom:8px;">No sessions found</div>
+          <div style="font-size:14px; color:var(--text-muted); margin-bottom:20px;">
+            ${filterDesc ? `We don't have any ${filterDesc} sessions yet.` : 'No sessions available right now.'}
+          </div>
+          <button class="btn-small ghost" onclick="document.querySelectorAll('#userApp .app-pill').forEach(b => b.classList.remove('active')); document.querySelector('#userApp .app-pill[onclick*=\'All\']').classList.add('active'); platform.appFilters.types.clear(); platform.appFilters.days.clear(); renderAppUserSessions();">
+            Clear filters
+          </button>
+        </div>`;
       return;
     }
     grid.innerHTML = list.map(s => {
