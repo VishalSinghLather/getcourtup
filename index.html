@@ -3293,13 +3293,13 @@
     document.getElementById("payIdVenue").textContent = `${s.venue} · ${formatSessionDate(s.startsAt, s.date)} · ${s.time}`;
     document.getElementById("payIdCourt").textContent = s.court;
     const booking = (s.bookings || []).find(b => b.userId === platform.currentUser.id && b.status === 'awaiting_payment');
-    const qty = booking && booking.quantity ? booking.quantity : 1;
-    const discount = booking && booking.discountPercent ? booking.discountPercent : 0;
+    const qtyDisplay = booking && booking.quantity ? booking.quantity : 1;
+    const discountDisplay = booking && booking.discountPercent ? booking.discountPercent : 0;
     
     document.getElementById("payIdAmount").textContent = `$${booking ? booking.amountPaid : s.price}`;
     
-    if (qty > 1) {
-      document.getElementById("payIdBulkInfo").textContent = `${qty} sessions · ${discount}% discount`;
+    if (qtyDisplay > 1) {
+      document.getElementById("payIdBulkInfo").textContent = `${qtyDisplay} sessions · ${discountDisplay}% discount`;
     } else {
       document.getElementById("payIdBulkInfo").textContent = '';
     }
