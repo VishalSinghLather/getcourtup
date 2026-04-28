@@ -2283,7 +2283,7 @@
     cancelingSessionId: null,
     payId: {
       phone: "0402 004 683",
-      name: "Vishal Singh Latheral Singh Lather"
+      name: "Vishal Singh Lather"
     },
     coachProfile: {
       name: "Vishal Singh Lather",
@@ -3300,12 +3300,22 @@
         const qty = myBooking ? (myBooking.quantity || 1) : 1;
         const ref = buildRef(s, platform.currentUser, qty);
         const displayPrice = myBooking ? (myBooking.amountPaid || s.price) : s.price;
+        
+        // Session type badge
+        const sessionTypeIcons = { 'social': '🤝', 'group': '👥', 'private': '👤' };
+        const sessionType = s.sessionType || 'group';
+        const sessionTypeIcon = sessionTypeIcons[sessionType] || '👥';
+        const sessionTypeLabel = sessionType.charAt(0).toUpperCase() + sessionType.slice(1);
+        
         return `
         <div class="app-session-card booked">
           <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
             <div>
               <div style="font-family:var(--font-display); font-size:15px; font-weight:700;">${s.venue}</div>
               <div style="font-size:12px; color:var(--text-muted);">${formatSessionDate(s.startsAt, s.date)} · ${s.time} · ${s.court}</div>
+              <div style="margin-top:4px;">
+                <span style="display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:2px 8px; font-size:11px; font-weight:600; color:var(--text-mid);">${sessionTypeIcon} ${sessionTypeLabel}</span>
+              </div>
             </div>
             <div>
               <div style="font-family:var(--font-display); font-size:20px; font-weight:800;">$${displayPrice}</div>
