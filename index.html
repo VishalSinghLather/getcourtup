@@ -3436,46 +3436,26 @@
     const s = platform.platformSessions.find(x => x.id === sid);
     if (!s) return;
     
-    // Find all bookings for sessions on the same day/time that are part of a bulk booking
-    const sessionDate = new Date(s.startsAt || s.date);
-    const dayOfWeek = sessionDate.getDay();
+    const booking = (s.bookings || []).find(b => 
+      b.userId === platform.currentUser.id && 
+      b.status === 'awaiting_payment'
+    );
     
-    // Get all sessions with same day/time/venue
-    const sameDaySessions = platform.platformSessions
-      .filter(sess => {
-        const d = new Date(sess.startsAt || sess.date);
-        return d.getDay() === dayOfWeek && 
-               sess.time === s.time &&
-               sess.venue === s.venue;
-      });
+    if (!booking) return;
     
-    // Find all user's bookings for these sessions
-    const userBookings = [];
-    sameDaySessions.forEach(sess => {
-      const booking = (sess.bookings || []).find(b => 
-        b.userId === platform.currentUser.id && 
-        b.status === 'awaiting_payment'
-      );
-      if (booking) userBookings.push({ ...booking, session: sess });
-    });
+    const qty = booking.quantity || 1;
+    const discount = booking.discountPercent || 0;
     
-    if (userBookings.length === 0) return;
+    const venueText = qty > 1
+      ? `${s.venue} · ${qty}-session package starting ${formatSessionDate(s.startsAt, s.date)}`
+      : `${s.venue} · ${formatSessionDate(s.startsAt, s.date)} · ${s.time}`;
     
-    const totalAmount = userBookings.reduce((sum, b) => sum + (b.amountPaid || 0), 0);
-    const discount = userBookings[0].discountPercent || 0;
-    
-    if (userBookings.length > 1) {
-      const firstSession = userBookings[0].session;
-      document.getElementById("payIdVenue").textContent = `${s.venue} · ${userBookings.length} sessions starting ${formatSessionDate(firstSession.startsAt, firstSession.date)}`;
-    } else {
-      document.getElementById("payIdVenue").textContent = `${s.venue} · ${formatSessionDate(s.startsAt, s.date)} · ${s.time}`;
-    }
-    
+    document.getElementById("payIdVenue").textContent = venueText;
     document.getElementById("payIdCourt").textContent = s.court;
-    document.getElementById("payIdAmount").textContent = `$${totalAmount}`;
+    document.getElementById("payIdAmount").textContent = `$${booking.amountPaid}`;
     
-    if (userBookings.length > 1) {
-      document.getElementById("payIdBulkInfo").textContent = `${userBookings.length} sessions · ${discount}% discount`;
+    if (qty > 1) {
+      document.getElementById("payIdBulkInfo").textContent = `${qty} sessions · ${discount}% discount`;
     } else {
       document.getElementById("payIdBulkInfo").textContent = '';
     }
@@ -3501,59 +3481,24 @@
     if (qty === 5) discount = 0.05;
     if (qty === 10) discount = 0.10;
     const finalPrice = Math.round(totalBase * (1 - discount));
-    const pricePerSession = Math.round(finalPrice / qty);
     
-    console.log('Booking details:', { qty, basePrice, totalBase, discount, finalPrice, pricePerSession });
+    console.log('Booking details:', { qty, basePrice, totalBase, discount, finalPrice });
 
-    // Find next X sessions with the same day of week
-    const sessionDate = new Date(s.startsAt || s.date);
-    const dayOfWeek = sessionDate.getDay();
-    const sameDaySessions = platform.platformSessions
-      .filter(sess => {
-        const d = new Date(sess.startsAt || sess.date);
-        return d.getDay() === dayOfWeek && 
-               sess.time === s.time &&
-               sess.venue === s.venue &&
-               d >= sessionDate;
-      })
-      .sort((a, b) => new Date(a.startsAt || a.date) - new Date(b.startsAt || b.date))
-      .slice(0, qty);
-    
-    console.log('Sessions to book:', sameDaySessions.map(x => ({ id: x.id, date: x.date, startsAt: x.startsAt })));
-
-    if (sameDaySessions.length < qty) {
-      showAppToast(`Only ${sameDaySessions.length} upcoming ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek]} sessions available`);
-      return;
-    }
-
-    // Check for any existing bookings
-    for (const sess of sameDaySessions) {
-      const existing = (sess.bookings || []).find(b => 
-        String(b.userId) === String(platform.currentUser.id) && 
-        (b.status === 'awaiting_payment' || b.status === 'paid')
-      );
-      if (existing) {
-        showAppToast(`You already have a booking for ${formatSessionDate(sess.startsAt, sess.date)}`);
-        return;
-      }
-    }
-
-    // Create bookings for all sessions
-    const bookingsToInsert = sameDaySessions.map(sess => ({
+    // For bulk bookings, we create ONE booking record with quantity
+    // This represents a prepaid package that starts with this session
+    const { data: newBooking, error } = await sb.from('bookings').insert({
       user_id: platform.currentUser.id,
-      session_id: sess.id,
-      amount_paid: pricePerSession,
-      quantity: 1,
+      session_id: s.id,
+      amount_paid: finalPrice,
+      quantity: qty,
       discount_percent: Math.round(discount * 100),
       status: 'awaiting_payment'
-    }));
-
-    const { data: newBookings, error } = await sb.from('bookings').insert(bookingsToInsert).select();
+    }).select().single();
 
     if (error) {
       // Check for duplicate booking error
       if (error.code === '23505' || error.message.includes('duplicate key')) {
-        showAppToast("You already have a booking for one of these sessions!");
+        showAppToast("You already have a booking for this session!");
       } else {
         showAppToast("Booking failed: " + (error.message || "please try again"));
       }
@@ -3561,33 +3506,32 @@
       return;
     }
     
-    console.log('Bookings created successfully:', newBookings);
+    console.log('Booking created successfully:', newBooking);
 
-    // Update local state for all booked sessions
-    sameDaySessions.forEach((sess, idx) => {
-      sess.bookedUserIds.push(platform.currentUser.id);
-      if (!sess.bookings) sess.bookings = [];
-      sess.bookings.push({
-        userId: platform.currentUser.id,
-        bookedAt: newBookings[idx].booked_at,
-        amountPaid: pricePerSession,
-        quantity: 1,
-        discountPercent: Math.round(discount * 100),
-        status: "awaiting_payment",
-        dbId: newBookings[idx].id
-      });
+    s.bookedUserIds.push(platform.currentUser.id);
+    if (!s.bookings) s.bookings = [];
+    s.bookings.push({
+      userId: platform.currentUser.id,
+      bookedAt: newBooking.booked_at,
+      amountPaid: finalPrice,
+      quantity: qty,
+      discountPercent: Math.round(discount * 100),
+      status: "awaiting_payment",
+      dbId: newBooking.id
     });
 
     // Fire booking notification email (non-blocking)
+    const sessionInfo = qty > 1 
+      ? `${qty}-session package starting ${formatSessionDate(s.startsAt, s.date)} ${s.time} · ${s.court}`
+      : `${formatSessionDate(s.startsAt, s.date)} ${s.time} · ${s.court}`;
+    
     sendNotification({
       type: "new_booking",
       playerName: platform.currentUser.name,
       playerEmail: platform.currentUser.email,
       playerPhone: platform.currentUser.phone,
-      sessionInfo: qty > 1 
-        ? `${qty} sessions starting ${formatSessionDate(s.startsAt, s.date)} ${s.time} · ${s.court}`
-        : `${formatSessionDate(s.startsAt, s.date)} ${s.time} · ${s.court}`,
-      amount: finalPrice,  // Send total amount they need to pay
+      sessionInfo: sessionInfo,
+      amount: finalPrice,
       quantity: qty,
       discount: Math.round(discount * 100),
       reference: buildRef(s, platform.currentUser)
@@ -3595,12 +3539,13 @@
 
     closeBookModal();
 
-    // Show PayID modal with bulk info
-    document.getElementById("payIdVenue").textContent = qty > 1
-      ? `${s.venue} · ${qty} sessions starting ${formatSessionDate(s.startsAt, s.date)}`
+    // Show PayID modal
+    const venueText = qty > 1
+      ? `${s.venue} · ${qty}-session package starting ${formatSessionDate(s.startsAt, s.date)}`
       : `${s.venue} · ${formatSessionDate(s.startsAt, s.date)} · ${s.time}`;
-    document.getElementById("payIdCourt").textContent = s.court;
     
+    document.getElementById("payIdVenue").textContent = venueText;
+    document.getElementById("payIdCourt").textContent = s.court;
     document.getElementById("payIdAmount").textContent = `$${finalPrice}`;
     
     if (qty > 1) {
@@ -3608,6 +3553,7 @@
     } else {
       document.getElementById("payIdBulkInfo").textContent = '';
     }
+    
     document.getElementById("payIdRef").textContent = buildRef(s, platform.currentUser);
     document.getElementById("payIdPhone").textContent = platform.payId.phone;
     document.getElementById("payIdName").textContent = platform.payId.name;
