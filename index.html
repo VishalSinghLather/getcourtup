@@ -2305,8 +2305,15 @@
 
       // Transform users (db uses joined_at, we use joined)
       platform.users = usersData.map(u => ({
-        id: u.id, name: u.name, email: u.email, phone: u.phone,
-        password: u.password, joined: u.joined_at ? u.joined_at.split('T')[0] : ''
+        id: u.id, 
+        name: u.name, 
+        email: u.email, 
+        phone: u.phone,
+        role: u.role || 'player',
+        blocked: u.blocked || false,
+        password: u.password, 
+        created_at: u.created_at,
+        joined: u.joined_at ? u.joined_at.split('T')[0] : (u.created_at ? u.created_at.split('T')[0] : '')
       }));
 
       // Transform sessions + attach bookings
@@ -3880,22 +3887,65 @@
       container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👥</div>No players registered yet.</div>';
       return;
     }
+    
+    // Filter to only show players (not managers/coaches)
+    const players = platform.users.filter(u => u.role === 'player');
+    
+    if (players.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👥</div>No players registered yet.</div>';
+      return;
+    }
+    
     container.innerHTML = `
       <table class="data-table">
-        <thead><tr><th>Player</th><th>Email</th><th>Phone</th><th>Joined</th><th>Bookings</th></tr></thead>
+        <thead><tr><th>Player</th><th>Email</th><th>Phone</th><th>Joined</th><th>Bookings</th><th style="text-align:right;">Actions</th></tr></thead>
         <tbody>
-        ${platform.users.map(u => {
+        ${players.map(u => {
           const bookings = platform.platformSessions.filter(s => s.bookedUserIds.includes(u.id)).length;
+          const joinedDate = u.created_at ? new Date(u.created_at).toLocaleDateString('en-AU') : 'N/A';
           return `<tr>
-            <td><div class="table-user"><div class="table-avatar" style="background:${avatarColors[u.id % avatarColors.length]};">${u.name.charAt(0).toUpperCase()}</div><div style="font-weight:600;">${u.name}</div></div></td>
+            <td><div class="table-user"><div class="table-avatar" style="background:${avatarColors[u.id.toString().charCodeAt(0) % avatarColors.length]};">${u.name.charAt(0).toUpperCase()}</div><div style="font-weight:600;">${u.name}</div></div></td>
             <td>${u.email}</td>
-            <td>${u.phone}</td>
-            <td>${u.joined}</td>
+            <td>${u.phone || 'N/A'}</td>
+            <td>${joinedDate}</td>
             <td><span class="badge badge-beg">${bookings}</span></td>
+            <td style="text-align:right;">
+              ${bookings === 0 
+                ? `<button class="btn-small danger" onclick="deleteRegisteredUser('${u.id}')" style="padding:6px 10px;">Delete</button>`
+                : `<span style="font-size:11px; color:var(--text-muted);">Has bookings</span>`
+              }
+            </td>
           </tr>`;
         }).join("")}
         </tbody>
       </table>`;
+  }
+
+  async function deleteRegisteredUser(userId) {
+    const user = platform.users.find(u => u.id === userId);
+    if (!user) return;
+    
+    // Check if user has any bookings
+    const hasBookings = platform.platformSessions.some(s => s.bookedUserIds.includes(userId));
+    if (hasBookings) {
+      showAppToast('Cannot delete user with active bookings');
+      return;
+    }
+    
+    if (!confirm(`Delete ${user.name}? This cannot be undone.`)) return;
+    
+    const { error } = await sb.from('users').delete().eq('id', userId);
+    if (error) {
+      showAppToast('Error deleting user: ' + error.message);
+      console.error(error);
+      return;
+    }
+    
+    // Remove from local state
+    platform.users = platform.users.filter(u => u.id !== userId);
+    
+    showAppToast(`✓ ${user.name} deleted`);
+    renderManagerUsers();
   }
 
   // ------ Session CRUD ------
@@ -3996,12 +4046,23 @@
     
     document.getElementById('addPlayerSessionInfo').textContent = `${s.venue} · ${formatSessionDate(s.startsAt, s.date)} · ${s.time}`;
     
-    // Populate dropdown with all users who aren't already booked
-    const availableUsers = platform.users.filter(u => !s.bookedUserIds.includes(u.id) && u.role === 'player');
+    // Get all players (role === 'player')
+    const allPlayers = platform.users.filter(u => u.role === 'player' || !u.role);
+    console.log('All players:', allPlayers.length);
+    console.log('Already booked user IDs:', s.bookedUserIds);
+    
+    // Filter out users already booked in this session
+    const availableUsers = allPlayers.filter(u => !s.bookedUserIds.includes(u.id));
+    console.log('Available users:', availableUsers.length, availableUsers);
     
     const select = document.getElementById('addPlayerSelect');
-    select.innerHTML = '<option value="">-- Select a player --</option>' + 
-      availableUsers.map(u => `<option value="${u.id}">${u.name} (${u.email})</option>`).join('');
+    if (availableUsers.length === 0) {
+      select.innerHTML = '<option value="">-- No available players --</option>';
+      showAppToast('All registered players are already booked for this session');
+    } else {
+      select.innerHTML = '<option value="">-- Select a player --</option>' + 
+        availableUsers.map(u => `<option value="${u.id}">${u.name} (${u.email})</option>`).join('');
+    }
     
     // Reset form
     document.getElementById('newPlayerName').value = '';
@@ -4506,272 +4567,6 @@
 
 
 
-
- else {
-          btn.style.background = 'white';
-          btn.style.color = 'var(--text-mid)';
-          btn.style.borderColor = 'var(--border)';
-        }
-      }
-    });
-    
-    // Update prices
-    const session = platform.platformSessions.find(s => s.id === platform.bookingSessionId);
-    if (!session) return;
-    
-    const basePrice = session.price;
-    const totalBase = basePrice * qty;
-    let discount = 0;
-    if (qty === 5) discount = 0.05;
-    if (qty === 10) discount = 0.10;
-    const finalPrice = Math.round(totalBase * (1 - discount));
-    
-    document.getElementById('bookModalPrice').textContent = '$' + finalPrice;
-    
-    if (qty > 1) {
-      document.getElementById('bulkQtyLabel').textContent = '(' + qty + ' sessions)';
-      document.getElementById('bulkOriginalPrice').textContent = '$' + totalBase;
-      document.getElementById('bulkOriginalPrice').style.display = 'block';
-      
-      // Show date range for bulk bookings
-      const dateInfo = document.getElementById('bulkDateInfo');
-      const dateRange = document.getElementById('bulkDateRange');
-      if (dateInfo && dateRange) {
-        // Parse the date properly
-        let sessionDate;
-        if (session.startsAt) {
-          sessionDate = new Date(session.startsAt);
-        } else if (session.date) {
-          sessionDate = new Date(session.date);
-        } else {
-          // Fallback to today if no date
-          sessionDate = new Date();
-        }
-        
-        const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][sessionDate.getDay()];
-        const startDateStr = sessionDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
-        
-        // Calculate end date (qty weeks from start)
-        const endDate = new Date(sessionDate);
-        endDate.setDate(endDate.getDate() + ((qty - 1) * 7));
-        const endDateStr = endDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
-        
-        dateRange.textContent = `Next ${qty} ${dayOfWeek}s from ${startDateStr} to ${endDateStr}`;
-        dateInfo.style.display = 'block';
-      }
-    } else {
-      document.getElementById('bulkQtyLabel').textContent = '';
-      document.getElementById('bulkOriginalPrice').style.display = 'none';
-      
-      // Hide date info for single session
-      const dateInfo = document.getElementById('bulkDateInfo');
-      if (dateInfo) dateInfo.style.display = 'none';
-    }
-  }
-
- catch (e) {
-      console.error('Error opening player profile:', e);
-      showAppToast('Error opening profile');
-    }
-  }
-
-
-
- = await sb.from('users').update({
-        name,
-        phone,
-        gender: gender || null,
-        dob: dob || null,
-        emergency_contact_name: emergencyName || null,
-        emergency_contact_phone: emergencyPhone || null,
-        medical_notes: medicalNotes || null
-      }).eq('id', platform.currentUser.id);
-      
-      if (error) throw error;
-      
-      // Update local state
-      platform.currentUser.name = name;
-      platform.currentUser.phone = phone;
-      platform.currentUser.gender = gender;
-      platform.currentUser.dob = dob;
-      platform.currentUser.emergencyName = emergencyName;
-      platform.currentUser.emergencyPhone = emergencyPhone;
-      platform.currentUser.medicalNotes = medicalNotes;
-      
-      // Update display
-      document.getElementById('appUserName').textContent = name.split(' ')[0];
-      
-      document.getElementById('profileSuccess').style.display = 'block';
-      showAppToast('✓ Profile updated!');
-      
-      setTimeout(() => {
-        document.getElementById('profileSuccess').style.display = 'none';
-      }, 2000);
-    } catch (e) {
-      console.error('Profile update error:', e);
-      showAppToast('Failed to update profile');
-    }
-  }
-
-  let currentRatingSessionId = null;
-  let currentRatingValue = 0;
-
-  function openRatingModal(sessionId) {
-    const session = platform.platformSessions.find(s => s.id === sessionId);
-    if (!session) return;
-    
-    currentRatingSessionId = sessionId;
-    currentRatingValue = 0;
-    
-    document.getElementById('ratingSessionInfo').textContent = `${session.venue} · ${formatSessionDate(session.startsAt, session.date)} · ${session.time}`;
-    document.getElementById('ratingComment').value = '';
-    document.getElementById('ratingSuccess').style.display = 'none';
-    document.getElementById('ratingBtn').style.display = 'block';
-    
-    // Reset stars
-    document.querySelectorAll('#starRating .star').forEach(s => {
-      s.textContent = '☆';
-      s.style.color = '#888';
-    });
-    
-    document.getElementById('ratingModal').classList.add('open');
-  }
-
-  function closeRatingModal() {
-    document.getElementById('ratingModal').classList.remove('open');
-  }
-
-  function setRating(stars) {
-    currentRatingValue = stars;
-    const starElements = document.querySelectorAll('#starRating .star');
-    starElements.forEach((star, i) => {
-      if (i < stars) {
-        star.textContent = '★';
-        star.style.color = '#FFB800';
-      } else {
-        star.textContent = '☆';
-        star.style.color = '#888';
-      }
-    });
-  }
-
-  async function submitRating() {
-    if (currentRatingValue === 0) {
-      showAppToast('Please select a star rating');
-      return;
-    }
-    
-    const comment = document.getElementById('ratingComment').value.trim();
-    
-    // Save rating to Supabase
-    try {
-      await sb.from('ratings').insert({
-        session_id: currentRatingSessionId,
-        user_id: platform.currentUser.id,
-        rating: currentRatingValue,
-        comment: comment || null
-      });
-      
-      document.getElementById('ratingSuccess').style.display = 'block';
-      document.getElementById('ratingBtn').style.display = 'none';
-      
-      setTimeout(() => {
-        closeRatingModal();
-      }, 1500);
-      
-      showAppToast('✓ Rating submitted!');
-    } catch (e) {
-      console.error('Rating error:', e);
-      showAppToast('Failed to submit rating');
-    }
-  }
-
-
-  async function renderUsersTab() {
-    const { data: users, error } = await sb.from('users').select('*').order('created_at', { ascending: false });
-    
-    if (error || !users) {
-      document.getElementById('usersTable').innerHTML = '<p style="color:var(--text-muted);">Failed to load users</p>';
-      return;
-    }
-    
-    document.getElementById('usersTable').innerHTML = `
-      <div class="data-table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Role</th>
-              <th>Joined</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${users.map(u => `
-              <tr>
-                <td><strong>${u.name || 'Unknown'}</strong></td>
-                <td>${u.email}</td>
-                <td>${u.phone || '-'}</td>
-                <td><span class="status-badge" style="background:${u.role === 'manager' ? 'var(--yellow-light)' : u.role === 'coach' ? 'var(--green-light)' : 'var(--surface)'};color:${u.role === 'manager' ? 'var(--yellow-dark)' : u.role === 'coach' ? 'var(--green-dark)' : 'var(--text-mid)'};">${u.role || 'player'}</span></td>
-                <td>${new Date(u.created_at).toLocaleDateString('en-AU')}</td>
-                <td><span class="status-badge" style="background:${u.blocked ? '#FCE8E8' : '#E8FFF6'};color:${u.blocked ? '#E24B4A' : '#00A878'};">${u.blocked ? 'Blocked' : 'Active'}</span></td>
-                <td>
-                  ${u.role !== 'manager' ? `
-                    <button class="btn-small ${u.blocked ? 'ghost' : 'danger'}" onclick="${u.blocked ? 'unblockUser' : 'blockUser'}('${u.id}')" style="margin-right:4px;">${u.blocked ? 'Unblock' : 'Block'}</button>
-                    ${!u.blocked ? `<button class="btn-small danger" onclick="deleteUser('${u.id}')">Delete</button>` : ''}
-                  ` : '<span style="color:var(--text-muted);font-size:12px;">Manager</span>'}
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-  }
-
-  async function blockUser(userId) {
-    if (!confirm('Block this user? They will not be able to log in.')) return;
-    
-    const { error } = await sb.from('users').update({ blocked: true }).eq('id', userId);
-    if (error) {
-      showAppToast('Failed to block user');
-      return;
-    }
-    
-    showAppToast('✓ User blocked');
-    renderUsersTab();
-  }
-
-  async function unblockUser(userId) {
-    const { error } = await sb.from('users').update({ blocked: false }).eq('id', userId);
-    if (error) {
-      showAppToast('Failed to unblock user');
-      return;
-    }
-    
-    showAppToast('✓ User unblocked');
-    renderUsersTab();
-  }
-
-  async function deleteUser(userId) {
-    if (!confirm('Permanently delete this user and all their bookings? This cannot be undone.')) return;
-    
-    // Delete user's bookings first
-    await sb.from('bookings').delete().eq('user_id', userId);
-    
-    // Delete user
-    const { error } = await sb.from('users').delete().eq('id', userId);
-    if (error) {
-      showAppToast('Failed to delete user');
-      return;
-    }
-    
-    showAppToast('✓ User deleted');
-    renderUsersTab();
-  }
 
 <!-- ============ AUTH MODAL ============ -->
 <div class="auth-overlay" id="authOverlay">
