@@ -3766,8 +3766,15 @@
       s.bookedUserIds.forEach(uid => {
         const u = platform.users.find(x => x.id === uid);
         if (u) {
-          const booking = (s.bookings || []).find(b => b.userId === uid && b.status !== "cancelled");
-          all.push({ user: u, session: s, booking });
+          const booking = (s.bookings || []).find(b => 
+            b.userId === uid && 
+            b.status !== "cancelled" && 
+            b.status !== "removed_by_manager"
+          );
+          // Only show if booking exists
+          if (booking) {
+            all.push({ user: u, session: s, booking });
+          }
         }
       });
     });
@@ -3781,10 +3788,9 @@
         <thead><tr><th>Player</th><th>Contact</th><th>Session</th><th>Type</th><th>When</th><th>Ref</th><th>Payment</th><th>Attendance</th><th style="text-align:right;">Actions</th></tr></thead>
         <tbody>
         ${all.map(b => {
-          const awaiting = b.booking && b.booking.status === "awaiting_payment";
-          const attended = b.booking && b.booking.status === "attended";
-          const isPaid = b.booking && b.booking.status === "paid";
-          if (b.booking) b.booking.attended = attended;
+          const awaiting = b.booking.status === "awaiting_payment";
+          const attended = b.booking.status === "attended";
+          const isPaid = b.booking.status === "paid";
           
           // Session type badge
           const sessionTypeIcons = { 'social': '🤝', 'group': '👥', 'private': '👤' };
@@ -3798,7 +3804,7 @@
             <td><div style="font-weight:600;">${b.session.venue}</div><div style="font-size:11px; color:var(--text-muted);">${b.session.court}</div></td>
             <td><span style="font-size:13px;">${sessionTypeIcon} ${sessionType.charAt(0).toUpperCase() + sessionType.slice(1)}</span></td>
             <td>${formatSessionDate(b.session.startsAt, b.session.date)}<br><span style="font-size:11px; color:var(--text-muted);">${b.session.time}</span></td>
-            <td><code style="font-size:11px; background:var(--surface); padding:2px 6px; border-radius:4px;">${buildRef(b.session, b.user, b.booking ? b.booking.quantity : 1)}</code></td>
+            <td><code style="font-size:11px; background:var(--surface); padding:2px 6px; border-radius:4px;">${buildRef(b.session, b.user, b.booking.quantity || 1)}</code></td>
             <td>
               ${awaiting
                 ? '<span class="status-badge" style="background:#FFF3EC; color:#CC4A10;">⚠ Awaiting $' + (b.booking.amountPaid || b.session.price) + '</span>'
@@ -4199,15 +4205,15 @@
       userName = newUser.name;
     }
     
-    // Create booking as "paid" (manager override, no payment needed)
+    // Create booking as "awaiting_payment" (manager will mark as paid after receiving payment)
     const { data: newBooking, error } = await sb.from('bookings').insert({
       user_id: userId,
       session_id: sessionId,
       amount_paid: s.price,
       quantity: 1,
       discount_percent: 0,
-      status: 'paid',
-      paid_at: new Date().toISOString()
+      status: 'awaiting_payment',
+      paid_at: null
     }).select().single();
     
     if (error) {
@@ -4225,8 +4231,8 @@
       amountPaid: s.price,
       quantity: 1,
       discountPercent: 0,
-      status: 'paid',
-      paidAt: new Date().toISOString(),
+      status: 'awaiting_payment',
+      paidAt: null,
       dbId: newBooking.id
     });
     
@@ -4935,7 +4941,7 @@
     </div>
     
     <div style="background:#FFF9F0; border-radius:10px; padding:12px; margin-top:14px; font-size:12px; color:var(--text-mid); line-height:1.5; border:1px solid #FFE4B8;">
-      ℹ️ Player will be added as <strong>confirmed & paid</strong> (manager override). No payment required.
+      ℹ️ Player will be added with status <strong>awaiting payment</strong>. Mark as paid after receiving payment.
     </div>
     
     <div style="display:flex; gap:8px; margin-top:16px;">
