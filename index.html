@@ -3689,9 +3689,9 @@
   function renderManagerStats() {
     const totalBookings = platform.platformSessions.reduce((acc, s) => acc + s.bookedUserIds.length, 0);
     
-    // Calculate revenue from PAID bookings only
+    // Calculate revenue from PAID and ATTENDED bookings (both are paid)
     const revenue = platform.platformSessions.reduce((acc, s) => {
-      const paidBookings = (s.bookings || []).filter(b => b.status === 'paid');
+      const paidBookings = (s.bookings || []).filter(b => b.status === 'paid' || b.status === 'attended');
       return acc + paidBookings.reduce((sum, b) => sum + (b.amountPaid || 0), 0);
     }, 0);
     
@@ -3769,25 +3769,33 @@
     }
     container.innerHTML = `
       <table class="data-table">
-        <thead><tr><th>Player</th><th>Contact</th><th>Session</th><th>When</th><th>Ref</th><th>Payment</th><th>Attendance</th><th style="text-align:right;">Actions</th></tr></thead>
+        <thead><tr><th>Player</th><th>Contact</th><th>Session</th><th>Type</th><th>When</th><th>Ref</th><th>Payment</th><th>Attendance</th><th style="text-align:right;">Actions</th></tr></thead>
         <tbody>
         ${all.map(b => {
           const awaiting = b.booking && b.booking.status === "awaiting_payment";
           const attended = b.booking && b.booking.status === "attended";
+          const isPaid = b.booking && b.booking.status === "paid";
           if (b.booking) b.booking.attended = attended;
+          
+          // Session type badge
+          const sessionTypeIcons = { 'social': '🤝', 'group': '👥', 'private': '👤' };
+          const sessionType = b.session.sessionType || 'group';
+          const sessionTypeIcon = sessionTypeIcons[sessionType] || '👥';
+          
           return `
           <tr>
             <td><div class="table-user"><div class="table-avatar" style="background:${avatarColors[b.user.id.toString().charCodeAt(0) % avatarColors.length]};">${b.user.name.charAt(0).toUpperCase()}</div><div style="font-weight:600;">${b.user.name}</div></div></td>
-            <td><div style="font-size:12px;">${b.user.email}</div><div style="font-size:11px; color:var(--text-muted);">${b.user.phone}</div></td>
+            <td><div style="font-size:12px;">${b.user.email}</div><div style="font-size:11px; color:var(--text-muted);">${b.user.phone || 'N/A'}</div></td>
             <td><div style="font-weight:600;">${b.session.venue}</div><div style="font-size:11px; color:var(--text-muted);">${b.session.court}</div></td>
+            <td><span style="font-size:13px;">${sessionTypeIcon} ${sessionType.charAt(0).toUpperCase() + sessionType.slice(1)}</span></td>
             <td>${formatSessionDate(b.session.startsAt, b.session.date)}<br><span style="font-size:11px; color:var(--text-muted);">${b.session.time}</span></td>
-            <td><code style="font-size:11px; background:var(--surface); padding:2px 6px; border-radius:4px;">${buildRef(b.session, b.user)}</code></td>
+            <td><code style="font-size:11px; background:var(--surface); padding:2px 6px; border-radius:4px;">${buildRef(b.session, b.user, b.booking ? b.booking.quantity : 1)}</code></td>
             <td>
               ${awaiting
-                ? '<span class="status-badge" style="background:#FFF3EC; color:#CC4A10;">⚠ Awaiting $' + b.session.price + '</span>'
+                ? '<span class="status-badge" style="background:#FFF3EC; color:#CC4A10;">⚠ Awaiting $' + (b.booking.amountPaid || b.session.price) + '</span>'
                 : attended
-                  ? '<span class="status-badge" style="background:#EEF2FF; color:#3358CC;">✓ Paid $' + b.session.price + '</span>'
-                  : '<span class="status-badge">✓ Paid $' + b.session.price + '</span>'}
+                  ? '<span class="status-badge" style="background:#EEF2FF; color:#3358CC;">✓ Paid $' + (b.booking.amountPaid || b.session.price) + '</span>'
+                  : '<span class="status-badge">✓ Paid $' + (b.booking.amountPaid || b.session.price) + '</span>'}
             </td>
             <td>
               ${attended
