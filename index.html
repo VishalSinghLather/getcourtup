@@ -2200,8 +2200,8 @@
   }
 
   // Helper: hours until a session starts (can be negative if past)
-  // Helper: build a short, bank-friendly reference with session date+time
-  function buildRef(session, user) {
+  // Helper: build a short, bank-friendly reference with session date+time and quantity
+  function buildRef(session, user, quantity = 1) {
     // Get clean first name (letters only, uppercase, max 8 chars)
     let firstName = "PLAYER";
     if (user && user.name) {
@@ -2211,18 +2211,34 @@
       const u = platform.users.find(x => x.id === user);
       if (u && u.name) firstName = u.name.split(" ")[0].toUpperCase().replace(/[^A-Z]/g, "").substring(0, 8);
     }
-    const dayShort = (session.date || "").substring(0, 3).toUpperCase(); // SAT, SUN
-    // Parse time like "7:00 AM" -> "7AM"
+    
+    // Get session date in format: 2MAY, 15JUN, etc
+    let dateShort = "";
+    if (session.startsAt) {
+      const d = new Date(session.startsAt);
+      const day = d.getDate();
+      const monthNames = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+      const month = monthNames[d.getMonth()];
+      dateShort = `${day}${month}`;
+    } else {
+      const dayShort = (session.date || "").substring(0, 3).toUpperCase(); // SAT, SUN
+      dateShort = dayShort;
+    }
+    
+    // Parse time like "7:00 AM" -> "7AM" or "9:00 AM" -> "9AM"
     const t = (session.time || "").replace(/\s/g, "").toUpperCase();
     const match = t.match(/^(\d{1,2}):?(\d{0,2})(AM|PM)$/);
     let timeShort = t;
     if (match) {
       const hour = match[1];
-      const mins = match[2];
       const period = match[3];
-      timeShort = mins && mins !== "00" ? hour + mins + period : hour + period;
+      timeShort = hour + period;
     }
-    return `${firstName}-${dayShort}-${timeShort}`;
+    
+    // Add quantity suffix if bulk booking
+    const qtySuffix = quantity > 1 ? `-${quantity}S` : '';
+    
+    return `${firstName}-${dateShort}-${timeShort}${qtySuffix}`;
   }
 
   // Convert ISO startsAt -> "Sat 3 May" style
@@ -3436,15 +3452,9 @@
     const s = platform.platformSessions.find(x => x.id === sid);
     if (!s) return;
     
-    const booking = (s.bookings || []).find(b => 
-      b.userId === platform.currentUser.id && 
-      b.status === 'awaiting_payment'
-    );
-    
-    if (!booking) return;
-    
-    const qty = booking.quantity || 1;
-    const discount = booking.discountPercent || 0;
+    const booking = (s.bookings || []).find(b => b.userId === platform.currentUser.id && b.status === 'awaiting_payment');
+    const qty = booking && booking.quantity ? booking.quantity : 1;
+    const discount = booking && booking.discountPercent ? booking.discountPercent : 0;
     
     const venueText = qty > 1
       ? `${s.venue} · ${qty}-session package starting ${formatSessionDate(s.startsAt, s.date)}`
@@ -3452,15 +3462,14 @@
     
     document.getElementById("payIdVenue").textContent = venueText;
     document.getElementById("payIdCourt").textContent = s.court;
-    document.getElementById("payIdAmount").textContent = `$${booking.amountPaid}`;
+    document.getElementById("payIdAmount").textContent = `$${booking ? booking.amountPaid : s.price}`;
     
     if (qty > 1) {
       document.getElementById("payIdBulkInfo").textContent = `${qty} sessions · ${discount}% discount`;
     } else {
       document.getElementById("payIdBulkInfo").textContent = '';
     }
-    
-    document.getElementById("payIdRef").textContent = buildRef(s, platform.currentUser);
+    document.getElementById("payIdRef").textContent = buildRef(s, platform.currentUser, qty);
     document.getElementById("payIdPhone").textContent = platform.payId.phone;
     document.getElementById("payIdName").textContent = platform.payId.name;
     document.getElementById("payIdModal").classList.add("open");
@@ -3484,8 +3493,6 @@
     
     console.log('Booking details:', { qty, basePrice, totalBase, discount, finalPrice });
 
-    // For bulk bookings, we create ONE booking record with quantity
-    // This represents a prepaid package that starts with this session
     const { data: newBooking, error } = await sb.from('bookings').insert({
       user_id: platform.currentUser.id,
       session_id: s.id,
@@ -3534,7 +3541,7 @@
       amount: finalPrice,
       quantity: qty,
       discount: Math.round(discount * 100),
-      reference: buildRef(s, platform.currentUser)
+      reference: buildRef(s, platform.currentUser, qty)
     });
 
     closeBookModal();
@@ -3546,15 +3553,18 @@
     
     document.getElementById("payIdVenue").textContent = venueText;
     document.getElementById("payIdCourt").textContent = s.court;
-    document.getElementById("payIdAmount").textContent = `$${finalPrice}`;
+    const booking = (s.bookings || []).find(b => b.userId === platform.currentUser.id && b.status === 'awaiting_payment');
+    const qtyDisplay = booking && booking.quantity ? booking.quantity : 1;
+    const discountDisplay = booking && booking.discountPercent ? booking.discountPercent : 0;
     
-    if (qty > 1) {
-      document.getElementById("payIdBulkInfo").textContent = `${qty} sessions · ${Math.round(discount * 100)}% discount`;
+    document.getElementById("payIdAmount").textContent = `$${booking ? booking.amountPaid : s.price}`;
+    
+    if (qtyDisplay > 1) {
+      document.getElementById("payIdBulkInfo").textContent = `${qtyDisplay} sessions · ${discountDisplay}% discount`;
     } else {
       document.getElementById("payIdBulkInfo").textContent = '';
     }
-    
-    document.getElementById("payIdRef").textContent = buildRef(s, platform.currentUser);
+    document.getElementById("payIdRef").textContent = buildRef(s, platform.currentUser, qtyDisplay);
     document.getElementById("payIdPhone").textContent = platform.payId.phone;
     document.getElementById("payIdName").textContent = platform.payId.name;
     document.getElementById("payIdModal").classList.add("open");
@@ -4174,6 +4184,16 @@
     }
   }
 
+  function copyPayIdRef() {
+    const ref = document.getElementById('payIdRef').textContent;
+    navigator.clipboard.writeText(ref).then(() => {
+      showAppToast('✓ Reference copied!');
+    }).catch(err => {
+      console.error('Copy failed:', err);
+      showAppToast('Copy failed - please select and copy manually');
+    });
+  }
+
 </script>
 
 
@@ -4445,16 +4465,6 @@
     
     showAppToast('✓ User deleted');
     renderUsersTab();
-  }
-
-  function copyPayIdRef() {
-    const ref = document.getElementById('payIdRef').textContent;
-    navigator.clipboard.writeText(ref).then(() => {
-      showAppToast('✓ Reference copied!');
-    }).catch(err => {
-      console.error('Copy failed:', err);
-      showAppToast('Copy failed - please select and copy manually');
-    });
   }
 
 <!-- ============ AUTH MODAL ============ -->
