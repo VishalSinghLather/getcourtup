@@ -3281,11 +3281,21 @@
       content.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div>You haven\'t booked any sessions yet.</div>';
       return;
     }
+    
+    // Debug: Log all bookings for current user
+    console.log('=== MY BOOKINGS DEBUG ===');
+    mySessions.forEach(s => {
+      const myBooking = (s.bookings || []).find(b => b.userId === platform.currentUser.id && b.status !== "cancelled");
+      console.log(`Session: ${s.venue} ${s.date} ${s.time}`);
+      console.log('Booking:', myBooking);
+      console.log('Status:', myBooking ? myBooking.status : 'NO BOOKING FOUND');
+    });
+    
     content.innerHTML = `<div class="app-sessions-grid">${
       mySessions.map(s => {
         const hrs = hoursUntil(s.startsAt);
         const policy = refundPolicy(hrs);
-        const myBooking = (s.bookings || []).find(b => b.userId === platform.currentUser.id && b.status !== "cancelled");
+        const myBooking = (s.bookings || []).find(b => b.userId === platform.currentUser.id && b.status !== "cancelled" && b.status !== "removed_by_manager");
         const awaiting = myBooking && myBooking.status === "awaiting_payment";
         const qty = myBooking ? (myBooking.quantity || 1) : 1;
         const ref = buildRef(s, platform.currentUser, qty);
