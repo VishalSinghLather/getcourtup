@@ -3318,6 +3318,27 @@
   let bulkBookingQty = 1; // Default to single session
 
   function selectBulkQty(qty) {
+    const session = platform.platformSessions.find(s => s.id === platform.bookingSessionId);
+    if (!session) return;
+    
+    // Count available future sessions with same day/time/venue
+    if (qty > 1) {
+      const sessionDate = new Date(session.startsAt || session.date);
+      const dayOfWeek = sessionDate.getDay();
+      const availableSessions = platform.platformSessions.filter(sess => {
+        const d = new Date(sess.startsAt || sess.date);
+        return d.getDay() === dayOfWeek && 
+               sess.time === session.time &&
+               sess.venue === session.venue &&
+               d >= sessionDate;
+      }).length;
+      
+      if (availableSessions < qty) {
+        showAppToast(`Only ${availableSessions} upcoming ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek]} sessions available. Cannot book ${qty} sessions.`);
+        return;
+      }
+    }
+    
     bulkBookingQty = qty;
     
     // Update button styles
@@ -3337,9 +3358,6 @@
     });
     
     // Update prices
-    const session = platform.platformSessions.find(s => s.id === platform.bookingSessionId);
-    if (!session) return;
-    
     const basePrice = session.price;
     const totalBase = basePrice * qty;
     let discount = 0;
@@ -3704,6 +3722,7 @@
               <div style="font-size:10px; color:${booked >= (s.minSpots || 2) ? '#00A878' : '#CC4A10'}; font-weight:600; margin-top:3px;">${booked >= (s.minSpots || 2) ? '✓ Confirmed to run' : `Needs ${(s.minSpots || 2) - booked} more`}</div>
             </td>
             <td style="text-align:right; white-space:nowrap;">
+              <button class="btn-small green" onclick="openAddPlayerModal(${s.id})" style="padding:6px 10px; margin-right:4px;">+ Add Player</button>
               <button class="btn-small ghost" onclick="openEditSession(${s.id})" style="padding:6px 10px;">Edit</button>
               <button class="btn-small danger" onclick="deleteSession(${s.id})" style="padding:6px 10px;">Delete</button>
             </td>
@@ -3956,6 +3975,204 @@
       if (!totalSpots.dataset.userTouched) totalSpots.value = "1";
       if (!minSpots.dataset.userTouched) minSpots.value = "1";
     }
+  }
+
+  // Open modal to add player to a specific session
+  function openAddPlayerModal(sessionId) {
+    platform.addingPlayerToSessionId = sessionId;
+    const s = platform.platformSessions.find(x => x.id === sessionId);
+    if (!s) return;
+    
+    document.getElementById('addPlayerSessionInfo').textContent = `${s.venue} · ${formatSessionDate(s.startsAt, s.date)} · ${s.time}`;
+    
+    // Populate dropdown with all users who aren't already booked
+    const availableUsers = platform.users.filter(u => !s.bookedUserIds.includes(u.id) && u.role === 'player');
+    
+    const select = document.getElementById('addPlayerSelect');
+    select.innerHTML = '<option value="">-- Select a player --</option>' + 
+      availableUsers.map(u => `<option value="${u.id}">${u.name} (${u.email})</option>`).join('');
+    
+    document.getElementById('addPlayerModal').classList.add('open');
+  }
+
+  function closeAddPlayerModal() {
+    document.getElementById('addPlayerModal').classList.remove('open');
+  }
+
+  async function confirmAddPlayer() {
+    const sessionId = platform.addingPlayerToSessionId;
+    const userId = document.getElementById('addPlayerSelect').value;
+    
+    if (!userId) {
+      showAppToast('Please select a player');
+      return;
+    }
+    
+    const s = platform.platformSessions.find(x => x.id === sessionId);
+    const user = platform.users.find(u => u.id === userId);
+    if (!s || !user) return;
+    
+    // Check if session is full
+    if (s.bookedUserIds.length >= s.totalSpots) {
+      showAppToast('Session is full');
+      return;
+    }
+    
+    // Create booking directly as "confirmed" (manager override, no payment needed)
+    const { data: newBooking, error } = await sb.from('bookings').insert({
+      user_id: userId,
+      session_id: sessionId,
+      amount_paid: s.price,
+      quantity: 1,
+      discount_percent: 0,
+      status: 'confirmed',  // Manager-added players are automatically confirmed
+      paid_at: new Date().toISOString()
+    }).select().single();
+    
+    if (error) {
+      console.error('Error adding player:', error);
+      showAppToast('Error adding player: ' + error.message);
+      return;
+    }
+    
+    // Update local state
+    s.bookedUserIds.push(userId);
+    if (!s.bookings) s.bookings = [];
+    s.bookings.push({
+      userId: userId,
+      bookedAt: newBooking.booked_at,
+      amountPaid: s.price,
+      quantity: 1,
+      discountPercent: 0,
+      status: 'confirmed',
+      paidAt: new Date().toISOString(),
+      dbId: newBooking.id
+    });
+    
+    closeAddPlayerModal();
+    showAppToast(`✓ ${user.name} added to session`);
+    renderManagerSessions();
+    renderManagerStats();
+  }
+
+  // Open recurring sessions modal
+  function openRecurringModal() {
+    // Pre-fill with defaults similar to add session
+    document.getElementById('rec_venue').value = 'Roketto Badminton';
+    document.getElementById('rec_court').value = '';
+    
+    const today = new Date();
+    const daysToSat = (6 - today.getDay() + 7) % 7 || 7;
+    const nextSat = new Date(today);
+    nextSat.setDate(today.getDate() + daysToSat);
+    document.getElementById('rec_startDate').value = nextSat.toISOString().split('T')[0];
+    
+    document.getElementById('rec_time').value = '';
+    document.getElementById('rec_level').value = 'Beginner';
+    document.getElementById('rec_age').value = '18+';
+    document.getElementById('rec_price').value = '45';
+    document.getElementById('rec_minSpots').value = '2';
+    document.getElementById('rec_spots').value = '5';
+    document.getElementById('rec_coach').value = platform.coachProfile.name || 'Vishal Singh Lather';
+    document.getElementById('rec_type').value = 'group';
+    document.getElementById('rec_weeks').value = '4';
+    
+    document.getElementById('recurringModal').classList.add('open');
+  }
+
+  function closeRecurringModal() {
+    document.getElementById('recurringModal').classList.remove('open');
+  }
+
+  async function saveRecurringSessions() {
+    const dateStr = document.getElementById('rec_startDate').value;
+    const time = document.getElementById('rec_time').value.trim();
+    const weeks = parseInt(document.getElementById('rec_weeks').value);
+    
+    if (!dateStr) { showAppToast('Please pick a start date'); return; }
+    if (!time) { showAppToast('Please enter a time'); return; }
+    if (isNaN(weeks) || weeks < 1 || weeks > 52) { showAppToast('Weeks must be between 1 and 52'); return; }
+    
+    const venue = document.getElementById('rec_venue').value.trim();
+    const court = document.getElementById('rec_court').value.trim();
+    const level = document.getElementById('rec_level').value;
+    const ageRange = document.getElementById('rec_age').value.trim();
+    const price = parseInt(document.getElementById('rec_price').value);
+    const minSpots = parseInt(document.getElementById('rec_minSpots').value);
+    const totalSpots = parseInt(document.getElementById('rec_spots').value);
+    const sessionType = document.getElementById('rec_type').value;
+    const coachName = document.getElementById('rec_coach').value.trim();
+    
+    if (!venue || !court) { showAppToast('Please fill venue and court'); return; }
+    if (isNaN(minSpots) || minSpots < 1) { showAppToast('Min players must be at least 1'); return; }
+    if (isNaN(totalSpots) || totalSpots < 1) { showAppToast('Max players must be at least 1'); return; }
+    if (minSpots > totalSpots) { showAppToast('Min can\'t be more than max'); return; }
+    
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const startDate = new Date(dateStr + 'T00:00:00');
+    if (isNaN(startDate.getTime())) { showAppToast('Invalid start date'); return; }
+    
+    const dayName = days[startDate.getDay()];
+    const time24 = convertTo24(time);
+    const [h, m] = time24.split(':').map(Number);
+    
+    // Create sessions for each week
+    const sessionsToCreate = [];
+    for (let i = 0; i < weeks; i++) {
+      const sessionDate = new Date(startDate);
+      sessionDate.setDate(startDate.getDate() + (i * 7));
+      sessionDate.setHours(isNaN(h) ? 9 : h, isNaN(m) ? 0 : m, 0, 0);
+      
+      sessionsToCreate.push({
+        venue,
+        court,
+        session_date: dayName,
+        session_time: time,
+        starts_at: sessionDate.toISOString(),
+        level,
+        age_range: ageRange,
+        price,
+        min_spots: minSpots,
+        total_spots: totalSpots,
+        coach: coachName || (sessionType === 'social' ? '' : 'Vishal Singh Lather'),
+        session_type: sessionType
+      });
+    }
+    
+    // Insert all sessions at once
+    const { data: newSessions, error } = await sb.from('sessions').insert(sessionsToCreate).select();
+    
+    if (error) {
+      showAppToast('Error creating sessions: ' + error.message);
+      console.error(error);
+      return;
+    }
+    
+    // Add to local state
+    newSessions.forEach(ns => {
+      platform.platformSessions.push({
+        id: ns.id,
+        venue: ns.venue,
+        court: ns.court,
+        date: ns.session_date,
+        time: ns.session_time,
+        startsAt: ns.starts_at,
+        level: ns.level,
+        ageRange: ns.age_range,
+        price: ns.price,
+        minSpots: ns.min_spots,
+        totalSpots: ns.total_spots,
+        coach: ns.coach,
+        sessionType: ns.session_type,
+        bookedUserIds: [],
+        bookings: []
+      });
+    });
+    
+    closeRecurringModal();
+    showAppToast(`✓ Created ${weeks} recurring sessions`);
+    renderManagerSessions();
+    renderManagerStats();
   }
 
   async function saveSession() {
@@ -4648,7 +4865,10 @@
     <div class="app-tab-content active" id="mtab-sessions">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <h3 style="font-family:var(--font-display); font-size:18px; font-weight:700;">All sessions</h3>
-        <button class="btn-small green" onclick="openAddSession()">+ Add new session</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-small ghost" onclick="openRecurringModal()">🔁 Add recurring</button>
+          <button class="btn-small green" onclick="openAddSession()">+ Add new session</button>
+        </div>
       </div>
       <div id="managerSessionsList"></div>
     </div>
@@ -4764,6 +4984,120 @@
     </div>
   </div>
 </div>
+
+<!-- Add Player to Session Modal -->
+<div class="auth-overlay" id="addPlayerModal">
+  <div class="auth-card" style="max-width:400px;">
+    <button class="auth-close" onclick="closeAddPlayerModal()">✕</button>
+    <h3 class="auth-title">Add player to session</h3>
+    <p class="auth-sub-small" id="addPlayerSessionInfo">Session details</p>
+    
+    <label class="auth-label">Select player</label>
+    <select class="auth-input" id="addPlayerSelect">
+      <option value="">-- Select a player --</option>
+    </select>
+    
+    <div style="background:#FFF9F0; border-radius:10px; padding:12px; margin-top:14px; font-size:12px; color:var(--text-mid); line-height:1.5; border:1px solid #FFE4B8;">
+      ℹ️ Player will be added as <strong>confirmed & paid</strong> (manager override). No payment required.
+    </div>
+    
+    <div style="display:flex; gap:8px; margin-top:16px;">
+      <button class="btn-small ghost" onclick="closeAddPlayerModal()" style="flex:1;">Cancel</button>
+      <button class="btn-small green" onclick="confirmAddPlayer()" style="flex:1;">Add player</button>
+    </div>
+  </div>
+</div>
+
+<!-- Recurring Sessions Modal -->
+<div class="auth-overlay" id="recurringModal">
+  <div class="auth-card" style="max-width:500px;">
+    <button class="auth-close" onclick="closeRecurringModal()">✕</button>
+    <h3 class="auth-title">Create recurring sessions</h3>
+    <p class="auth-sub-small">Create multiple weekly sessions at once (e.g., every Thursday for 8 weeks).</p>
+    
+    <div class="form-grid">
+      <div class="form-grid-full">
+        <label class="auth-label">Venue</label>
+        <input type="text" class="auth-input" id="rec_venue" value="Roketto Badminton">
+      </div>
+      <div>
+        <label class="auth-label">Court</label>
+        <input type="text" class="auth-input" id="rec_court" placeholder="Court 1">
+      </div>
+      <div>
+        <label class="auth-label">Start date (first session)</label>
+        <input type="date" class="auth-input" id="rec_startDate">
+      </div>
+      <div>
+        <label class="auth-label">Time</label>
+        <input type="text" class="auth-input" id="rec_time" placeholder="7:00 AM">
+      </div>
+      <div>
+        <label class="auth-label">Number of weeks</label>
+        <input type="number" class="auth-input" id="rec_weeks" value="4" min="1" max="52">
+      </div>
+      <div>
+        <label class="auth-label">Session type</label>
+        <select class="auth-input" id="rec_type">
+          <option value="social">🤝 Social play</option>
+          <option value="group">👥 Group coaching</option>
+          <option value="private">👤 Private coaching</option>
+        </select>
+      </div>
+      <div>
+        <label class="auth-label">Level</label>
+        <select class="auth-input" id="rec_level">
+          <option>All levels</option>
+          <option>Beginner</option>
+          <option>Intermediate</option>
+          <option>Advanced</option>
+        </select>
+      </div>
+      <div>
+        <label class="auth-label">Age range</label>
+        <input type="text" class="auth-input" id="rec_age" value="18+">
+      </div>
+      <div>
+        <label class="auth-label">Price ($)</label>
+        <input type="number" class="auth-input" id="rec_price" value="45">
+      </div>
+      <div>
+        <label class="auth-label">Min. players</label>
+        <input type="number" class="auth-input" id="rec_minSpots" value="2" min="1">
+      </div>
+      <div>
+        <label class="auth-label">Max. players</label>
+        <input type="number" class="auth-input" id="rec_spots" value="5" min="1">
+      </div>
+      <div class="form-grid-full">
+        <label class="auth-label">Coach name</label>
+        <input type="text" class="auth-input" id="rec_coach" value="Vishal Singh Lather">
+      </div>
+    </div>
+    
+    <div style="background:#E8FFF6; border-radius:10px; padding:12px; margin-top:14px; font-size:12px; color:var(--green-dark); line-height:1.5; border:1px solid #00C896;">
+      💡 This will create <strong id="recWeeksPreview">4</strong> identical sessions, one per week starting from your chosen date.
+    </div>
+    
+    <div style="display:flex; gap:8px; margin-top:16px;">
+      <button class="btn-small ghost" onclick="closeRecurringModal()" style="flex:1;">Cancel</button>
+      <button class="btn-small black" onclick="saveRecurringSessions()" style="flex:1;">Create sessions</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Update the preview when weeks changes
+document.addEventListener('DOMContentLoaded', function() {
+  const weeksInput = document.getElementById('rec_weeks');
+  if (weeksInput) {
+    weeksInput.addEventListener('input', function() {
+      const preview = document.getElementById('recWeeksPreview');
+      if (preview) preview.textContent = this.value || '4';
+    });
+  }
+});
+</script>
 
 
 
