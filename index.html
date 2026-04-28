@@ -2272,7 +2272,7 @@
 
   const platform = {
     users: [], // populated from Supabase
-    manager: { email:"getcourtupbookings@gmail.com", password:"manager123", name:"Vishal Singh Lather" },
+    // Manager credentials now secured by Supabase Auth - no hardcoded passwords!
     platformSessions: [], // populated from Supabase
     currentUser: null,
     role: null,
@@ -3019,19 +3019,47 @@
     const pw = document.getElementById("userLoginPw").value;
     const err = document.getElementById("userLoginError");
 
-    const { data: user, error } = await sb.from('users').select('*').eq('email', email).eq('password', pw).maybeSingle();
-    if (error || !user) { err.classList.add("show"); return; }
-    err.classList.remove("show");
+    try {
+      // Use Supabase Auth for secure authentication
+      const { data: authData, error: authError } = await sb.auth.signInWithPassword({
+        email: email,
+        password: pw
+      });
+      
+      if (authError) throw authError;
+      
+      // Get user data from users table
+      const { data: user, error: userError } = await sb
+        .from('users')
+        .select('*')
+        .eq('auth_id', authData.user.id)
+        .maybeSingle();
+      
+      if (userError || !user) {
+        err.textContent = "User account not found";
+        err.classList.add("show");
+        return;
+      }
+      
+      err.classList.remove("show");
 
-    platform.currentUser = {
-      id: user.id, name: user.name, email: user.email,
-      phone: user.phone, password: user.password,
-      joined: user.joined_at ? user.joined_at.split('T')[0] : ''
-    };
-    platform.role = "user";
-    saveAuthSession();
-    await loadAllData();
-    enterUserApp();
+      platform.currentUser = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        authId: authData.user.id,
+        joined: user.joined_at ? user.joined_at.split('T')[0] : ''
+      };
+      platform.role = "user";
+      saveAuthSession();
+      await loadAllData();
+      enterUserApp();
+    } catch (e) {
+      console.error("Login error:", e);
+      err.textContent = "Invalid email or password";
+      err.classList.add("show");
+    }
   }
   async function userSignup() {
     const name = document.getElementById("signupName").value.trim();
@@ -3039,58 +3067,135 @@
     const phone = document.getElementById("signupPhone").value.trim();
     const pw = document.getElementById("signupPw").value;
     const err = document.getElementById("signupError");
-    if (!name || !email || !phone || !pw) { err.textContent = "Please fill in all fields"; err.classList.add("show"); return; }
-    if (pw.length < 6) { err.textContent = "Password must be at least 6 characters"; err.classList.add("show"); return; }
-
-    // Check existing in DB
-    const { data: existing } = await sb.from('users').select('id').eq('email', email).maybeSingle();
-    if (existing) { err.textContent = "An account with this email already exists"; err.classList.add("show"); return; }
-    err.classList.remove("show");
-
-    const { data: newUser, error } = await sb.from('users').insert({ name, email, phone, password: pw }).select().single();
-    if (error) {
-      err.textContent = "Signup failed: " + (error.message || "please try again");
+    
+    if (!name || !email || !phone || !pw) {
+      err.textContent = "Please fill in all fields";
       err.classList.add("show");
-      console.error("SIGNUP ERROR:", error);
       return;
     }
-    const userObj = {
-      id: newUser.id, name: newUser.name, email: newUser.email,
-      phone: newUser.phone, password: newUser.password,
-      joined: newUser.joined_at ? newUser.joined_at.split("T")[0] : ""
-    };
-    platform.users.unshift(userObj);
-    platform.currentUser = userObj;
-    platform.role = "user";
-    saveAuthSession();
+    
+    if (pw.length < 6) {
+      err.textContent = "Password must be at least 6 characters";
+      err.classList.add("show");
+      return;
+    }
 
-    // Fire signup notification email (non-blocking)
-    sendNotification({
-      type: "new_signup",
-      playerName: name,
-      playerEmail: email,
-      playerPhone: phone
-    });
+    try {
+      // Create Supabase Auth user
+      const { data: authData, error: authError } = await sb.auth.signUp({
+        email: email,
+        password: pw
+      });
+      
+      if (authError) throw authError;
+      
+      // Create user record in database
+      const { data: newUser, error: userError } = await sb.from('users').insert({
+        auth_id: authData.user.id,
+        name: name,
+        email: email,
+        phone: phone,
+        role: 'player'
+      }).select().single();
+      
+      if (userError) throw userError;
+      
+      err.classList.remove("show");
+      
+      const userObj = {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        phone: newUser.phone,
+        authId: authData.user.id,
+        joined: newUser.joined_at ? newUser.joined_at.split("T")[0] : ""
+      };
+      
+      platform.users.unshift(userObj);
+      platform.currentUser = userObj;
+      platform.role = "user";
+      saveAuthSession();
 
-    await loadAllData();
-    enterUserApp();
-    showAppToast("Welcome to GetCourtUp, " + name.split(" ")[0] + "! 🏸");
+      // Fire signup notification email (non-blocking)
+      sendNotification({
+        type: "new_signup",
+        playerName: name,
+        playerEmail: email,
+        playerPhone: phone
+      });
+
+      await loadAllData();
+      enterUserApp();
+      showAppToast("Welcome to GetCourtUp, " + name.split(" ")[0] + "! 🏸");
+    } catch (e) {
+      console.error("Signup error:", e);
+      err.textContent = e.message || "Signup failed - please try again";
+      err.classList.add("show");
+    }
   }
   async function managerLogin() {
     const email = document.getElementById("managerLoginEmail").value.trim().toLowerCase();
     const pw = document.getElementById("managerLoginPw").value;
     const err = document.getElementById("managerLoginError");
-    if (email !== platform.manager.email || pw !== platform.manager.password) { err.classList.add("show"); return; }
-    err.classList.remove("show");
-    platform.role = "manager";
-    saveAuthSession();
-    await loadAllData();
-    enterManagerApp();
+    
+    try {
+      // Use Supabase Auth for secure authentication
+      const { data: authData, error: authError } = await sb.auth.signInWithPassword({
+        email: email,
+        password: pw
+      });
+      
+      if (authError) throw authError;
+      
+      // Get user data and verify they're a manager
+      const { data: user, error: userError } = await sb
+        .from('users')
+        .select('*')
+        .eq('auth_id', authData.user.id)
+        .maybeSingle();
+      
+      if (userError || !user) {
+        err.textContent = "User account not found";
+        err.classList.add("show");
+        return;
+      }
+      
+      if (user.role !== 'manager' && user.role !== 'coach') {
+        err.textContent = "Access denied - not a manager account";
+        err.classList.add("show");
+        await sb.auth.signOut();
+        return;
+      }
+      
+      err.classList.remove("show");
+      
+      platform.currentUser = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        authId: authData.user.id
+      };
+      platform.role = "manager";
+      saveAuthSession();
+      await loadAllData();
+      enterManagerApp();
+    } catch (e) {
+      console.error("Manager login error:", e);
+      err.textContent = "Invalid email or password";
+      err.classList.add("show");
+    }
   }
-  function logout() {
+  async function logout() {
     platform.currentUser = null;
     platform.role = null;
-    try { localStorage.removeItem('gcu_session'); } catch(e) {}
+    try {
+      await sb.auth.signOut();
+      localStorage.removeItem('gcu_session');
+    } catch(e) {
+      console.error('Logout error:', e);
+    }
     document.getElementById("userApp").classList.remove("active");
     document.getElementById("managerApp").classList.remove("active");
     ["userLoginEmail","userLoginPw","managerLoginEmail","managerLoginPw","signupName","signupEmail","signupPhone","signupPw"].forEach(id => {
