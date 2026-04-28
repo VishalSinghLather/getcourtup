@@ -4139,11 +4139,15 @@
         return;
       }
       
+      // Generate a temporary password (they can change it later)
+      const tempPassword = 'Court' + Math.random().toString(36).slice(-8);
+      
       // Create user in database
       const { data: newUser, error: userError } = await sb.from('users').insert({
         name,
         email,
         phone,
+        password: tempPassword,
         role: 'player',
         blocked: false
       }).select().single();
@@ -4153,6 +4157,16 @@
         showAppToast('Error creating user: ' + userError.message);
         return;
       }
+      
+      // Send welcome email with login credentials
+      sendNotification({
+        type: 'new_user_created',
+        playerName: name,
+        playerEmail: email,
+        playerPhone: phone,
+        tempPassword: tempPassword,
+        loginUrl: window.location.origin
+      });
       
       // Add to local state
       platform.users.push({
