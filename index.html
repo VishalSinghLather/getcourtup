@@ -3630,6 +3630,19 @@
         refund_amount: refundAmount
       }).eq('id', myBooking.dbId);
       if (error) { showAppToast("Error cancelling"); console.error(error); return; }
+      
+      // Send cancellation notification
+      sendNotification({
+        type: "cancellation",
+        playerName: platform.currentUser.name,
+        playerEmail: platform.currentUser.email,
+        playerPhone: platform.currentUser.phone,
+        sessionInfo: `${formatSessionDate(s.startsAt, s.date)} ${s.time} · ${s.court}`,
+        venue: s.venue,
+        refundAmount: refundAmount,
+        refundPercent: policy.pct,
+        reference: buildRef(s, platform.currentUser)
+      });
     }
 
     s.bookedUserIds = s.bookedUserIds.filter(id => id !== platform.currentUser.id);
@@ -3795,11 +3808,11 @@
     const b = (s.bookings || []).find(x => x.userId === uid && x.status === "awaiting_payment");
     if (b && b.dbId) {
       const { error } = await sb.from('bookings').update({
-        status: 'confirmed',
+        status: 'paid',
         paid_at: new Date().toISOString()
       }).eq('id', b.dbId);
-      if (error) { showAppToast("Error updating"); return; }
-      b.status = "confirmed";
+      if (error) { showAppToast("Error updating"); console.error(error); return; }
+      b.status = "paid";
       b.paidAt = new Date().toISOString();
       showAppToast("✓ Payment marked as received");
       renderManagerBookings();
@@ -3813,12 +3826,9 @@
     const b = (s.bookings || []).find(x => x.userId === uid && x.status !== "cancelled" && x.status !== "removed_by_manager");
     if (!b || !b.dbId) { showAppToast("Booking not found"); return; }
 
-    // Store attendance in Supabase bookings table
-    // We'll use the status field with a prefix trick: "confirmed_attended" or keep "confirmed"
-    // Better: we update a note in the existing status
-    const newStatus = attended ? "attended" : "confirmed";
+    const newStatus = attended ? "attended" : "paid";
     const { error } = await sb.from('bookings').update({ status: newStatus }).eq('id', b.dbId);
-    if (error) { showAppToast("Error: " + error.message); return; }
+    if (error) { showAppToast("Error: " + error.message); console.error(error); return; }
 
     b.attended = attended;
     b.status = newStatus;
@@ -3829,14 +3839,14 @@
   async function markUnpaid(sid, uid) {
     const s = platform.platformSessions.find(x => x.id === sid);
     if (!s) return;
-    const b = (s.bookings || []).find(x => x.userId === uid && x.status === "confirmed");
+    const b = (s.bookings || []).find(x => x.userId === uid && (x.status === "paid" || x.status === "attended"));
     if (!b || !b.dbId) return;
     if (!confirm("Mark this booking as unpaid? The player will see they owe money again.")) return;
     const { error } = await sb.from('bookings').update({
       status: 'awaiting_payment',
       paid_at: null
     }).eq('id', b.dbId);
-    if (error) { showAppToast("Error: " + error.message); return; }
+    if (error) { showAppToast("Error: " + error.message); console.error(error); return; }
     b.status = "awaiting_payment";
     b.paidAt = null;
     showAppToast("⚠ Booking marked as unpaid");
@@ -3980,6 +3990,7 @@
   // Open modal to add player to a specific session
   function openAddPlayerModal(sessionId) {
     platform.addingPlayerToSessionId = sessionId;
+    platform.addPlayerMode = 'existing'; // Default to existing
     const s = platform.platformSessions.find(x => x.id === sessionId);
     if (!s) return;
     
@@ -3992,7 +4003,35 @@
     select.innerHTML = '<option value="">-- Select a player --</option>' + 
       availableUsers.map(u => `<option value="${u.id}">${u.name} (${u.email})</option>`).join('');
     
+    // Reset form
+    document.getElementById('newPlayerName').value = '';
+    document.getElementById('newPlayerEmail').value = '';
+    document.getElementById('newPlayerPhone').value = '';
+    
+    // Show existing player mode by default
+    switchAddPlayerMode('existing');
+    
     document.getElementById('addPlayerModal').classList.add('open');
+  }
+
+  function switchAddPlayerMode(mode) {
+    platform.addPlayerMode = mode;
+    
+    if (mode === 'existing') {
+      document.getElementById('addExistingPlayer').style.display = 'block';
+      document.getElementById('addNewPlayer').style.display = 'none';
+      document.getElementById('addExistingBtn').style.background = 'var(--green)';
+      document.getElementById('addExistingBtn').style.color = 'var(--black)';
+      document.getElementById('addNewBtn').style.background = 'white';
+      document.getElementById('addNewBtn').style.color = 'var(--text-mid)';
+    } else {
+      document.getElementById('addExistingPlayer').style.display = 'none';
+      document.getElementById('addNewPlayer').style.display = 'block';
+      document.getElementById('addExistingBtn').style.background = 'white';
+      document.getElementById('addExistingBtn').style.color = 'var(--text-mid)';
+      document.getElementById('addNewBtn').style.background = 'var(--green)';
+      document.getElementById('addNewBtn').style.color = 'var(--black)';
+    }
   }
 
   function closeAddPlayerModal() {
@@ -4001,16 +4040,8 @@
 
   async function confirmAddPlayer() {
     const sessionId = platform.addingPlayerToSessionId;
-    const userId = document.getElementById('addPlayerSelect').value;
-    
-    if (!userId) {
-      showAppToast('Please select a player');
-      return;
-    }
-    
     const s = platform.platformSessions.find(x => x.id === sessionId);
-    const user = platform.users.find(u => u.id === userId);
-    if (!s || !user) return;
+    if (!s) return;
     
     // Check if session is full
     if (s.bookedUserIds.length >= s.totalSpots) {
@@ -4018,14 +4049,72 @@
       return;
     }
     
-    // Create booking directly as "confirmed" (manager override, no payment needed)
+    let userId, userName;
+    
+    if (platform.addPlayerMode === 'existing') {
+      userId = document.getElementById('addPlayerSelect').value;
+      if (!userId) {
+        showAppToast('Please select a player');
+        return;
+      }
+      const user = platform.users.find(u => u.id === userId);
+      if (!user) return;
+      userName = user.name;
+    } else {
+      // Create new user
+      const name = document.getElementById('newPlayerName').value.trim();
+      const email = document.getElementById('newPlayerEmail').value.trim();
+      const phone = document.getElementById('newPlayerPhone').value.trim();
+      
+      if (!name || !email || !phone) {
+        showAppToast('Please fill all fields');
+        return;
+      }
+      
+      // Check if email already exists
+      const existingUser = platform.users.find(u => u.email === email);
+      if (existingUser) {
+        showAppToast('User with this email already exists');
+        return;
+      }
+      
+      // Create user in database
+      const { data: newUser, error: userError } = await sb.from('users').insert({
+        name,
+        email,
+        phone,
+        role: 'player',
+        blocked: false
+      }).select().single();
+      
+      if (userError) {
+        console.error('Error creating user:', userError);
+        showAppToast('Error creating user: ' + userError.message);
+        return;
+      }
+      
+      // Add to local state
+      platform.users.push({
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        phone: newUser.phone,
+        role: 'player',
+        blocked: false
+      });
+      
+      userId = newUser.id;
+      userName = newUser.name;
+    }
+    
+    // Create booking as "paid" (manager override, no payment needed)
     const { data: newBooking, error } = await sb.from('bookings').insert({
       user_id: userId,
       session_id: sessionId,
       amount_paid: s.price,
       quantity: 1,
       discount_percent: 0,
-      status: 'confirmed',  // Manager-added players are automatically confirmed
+      status: 'paid',
       paid_at: new Date().toISOString()
     }).select().single();
     
@@ -4044,13 +4133,13 @@
       amountPaid: s.price,
       quantity: 1,
       discountPercent: 0,
-      status: 'confirmed',
+      status: 'paid',
       paidAt: new Date().toISOString(),
       dbId: newBooking.id
     });
     
     closeAddPlayerModal();
-    showAppToast(`✓ ${user.name} added to session`);
+    showAppToast(`✓ ${userName} added to session`);
     renderManagerSessions();
     renderManagerStats();
   }
@@ -4987,15 +5076,37 @@
 
 <!-- Add Player to Session Modal -->
 <div class="auth-overlay" id="addPlayerModal">
-  <div class="auth-card" style="max-width:400px;">
+  <div class="auth-card" style="max-width:420px;">
     <button class="auth-close" onclick="closeAddPlayerModal()">✕</button>
     <h3 class="auth-title">Add player to session</h3>
     <p class="auth-sub-small" id="addPlayerSessionInfo">Session details</p>
     
-    <label class="auth-label">Select player</label>
-    <select class="auth-input" id="addPlayerSelect">
-      <option value="">-- Select a player --</option>
-    </select>
+    <div style="margin-bottom:16px;">
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <button id="addExistingBtn" class="btn-small" onclick="switchAddPlayerMode('existing')" style="flex:1; background:var(--green); color:var(--black);">Existing player</button>
+        <button id="addNewBtn" class="btn-small ghost" onclick="switchAddPlayerMode('new')" style="flex:1;">New player</button>
+      </div>
+      
+      <!-- Existing player selection -->
+      <div id="addExistingPlayer">
+        <label class="auth-label">Select player</label>
+        <select class="auth-input" id="addPlayerSelect">
+          <option value="">-- Select a player --</option>
+        </select>
+      </div>
+      
+      <!-- New player form -->
+      <div id="addNewPlayer" style="display:none;">
+        <label class="auth-label">Player name *</label>
+        <input type="text" class="auth-input" id="newPlayerName" placeholder="John Smith">
+        
+        <label class="auth-label">Email *</label>
+        <input type="email" class="auth-input" id="newPlayerEmail" placeholder="john@example.com">
+        
+        <label class="auth-label">Phone *</label>
+        <input type="tel" class="auth-input" id="newPlayerPhone" placeholder="04XX XXX XXX">
+      </div>
+    </div>
     
     <div style="background:#FFF9F0; border-radius:10px; padding:12px; margin-top:14px; font-size:12px; color:var(--text-mid); line-height:1.5; border:1px solid #FFE4B8;">
       ℹ️ Player will be added as <strong>confirmed & paid</strong> (manager override). No payment required.
