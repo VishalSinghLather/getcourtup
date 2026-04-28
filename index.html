@@ -3375,17 +3375,29 @@
   }
 
   function openAppBook(sid) {
+    console.log('openAppBook called with session ID:', sid);
     const s = platform.platformSessions.find(x => x.id === sid);
-    if (!s) return;
+    if (!s) {
+      console.error('Session not found:', sid);
+      return;
+    }
+    console.log('Found session:', s);
     
     // Check if user already has ANY booking (paid or unpaid) for this session
     const existingBooking = (s.bookings || []).find(b => b.userId === platform.currentUser.id);
     if (existingBooking || s.bookedUserIds.includes(platform.currentUser.id)) { 
+      console.log('User already booked this session');
       showAppToast("You already have a booking for this session!"); 
       return; 
     }
     
-    if (s.bookedUserIds.length >= s.totalSpots) { showAppToast("This session is full"); return; }
+    if (s.bookedUserIds.length >= s.totalSpots) { 
+      console.log('Session is full');
+      showAppToast("This session is full"); 
+      return; 
+    }
+    
+    console.log('Opening book modal...');
     platform.bookingSessionId = sid;
     bulkBookingQty = 1; // Reset to single session
     document.getElementById("bookModalVenue").textContent = s.venue;
