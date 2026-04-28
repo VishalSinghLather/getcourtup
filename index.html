@@ -3074,6 +3074,14 @@
       return;
     }
     
+    // Validate Australian mobile number
+    const phoneDigits = phone.replace(/\s/g, ''); // Remove spaces
+    if (!/^04\d{8}$/.test(phoneDigits)) {
+      err.textContent = "Phone must be Australian mobile (04XXXXXXXX - 10 digits)";
+      err.classList.add("show");
+      return;
+    }
+    
     if (pw.length < 6) {
       err.textContent = "Password must be at least 6 characters";
       err.classList.add("show");
@@ -4679,6 +4687,22 @@
       return;
     }
     
+    // Validate Australian mobile number
+    const phoneDigits = phone.replace(/\s/g, '');
+    if (!/^04\d{8}$/.test(phoneDigits)) {
+      showAppToast('Phone must be Australian mobile (04XXXXXXXX - 10 digits)');
+      return;
+    }
+    
+    // Validate emergency phone if provided
+    if (emergencyPhone) {
+      const emergencyDigits = emergencyPhone.replace(/\s/g, '');
+      if (!/^04\d{8}$/.test(emergencyDigits)) {
+        showAppToast('Emergency phone must be Australian mobile (04XXXXXXXX - 10 digits)');
+        return;
+      }
+    }
+    
     try {
       const { error } = await sb.from('users').update({
         name,
@@ -4782,7 +4806,7 @@
       <label class="auth-label">Email</label>
       <input type="email" class="auth-input" id="signupEmail" placeholder="you@example.com">
       <label class="auth-label">Phone</label>
-      <input type="tel" class="auth-input" id="signupPhone" placeholder="04XX XXX XXX">
+      <input type="tel" class="auth-input" id="signupPhone" placeholder="04XX XXX XXX" pattern="04[0-9]{8}" maxlength="10" title="Australian mobile number starting with 04 (10 digits)">
       <label class="auth-label">Password</label>
       <input type="password" class="auth-input" id="signupPw" placeholder="Minimum 6 characters">
       <div class="auth-error" id="signupError"></div>
@@ -5384,7 +5408,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Email cannot be changed</div>
     
     <label class="auth-label">Phone</label>
-    <input type="tel" class="auth-input" id="profilePhone" placeholder="04XX XXX XXX">
+    <input type="tel" class="auth-input" id="profilePhone" placeholder="04XX XXX XXX" pattern="04[0-9]{8}" maxlength="10" title="Australian mobile number starting with 04 (10 digits)">
     
     <div class="form-grid">
       <div>
@@ -5406,7 +5430,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <input type="text" class="auth-input" id="profileEmergencyName" placeholder="Name">
     
     <label class="auth-label">Emergency contact phone</label>
-    <input type="tel" class="auth-input" id="profileEmergencyPhone" placeholder="04XX XXX XXX">
+    <input type="tel" class="auth-input" id="profileEmergencyPhone" placeholder="04XX XXX XXX" pattern="04[0-9]{8}" maxlength="10" title="Australian mobile number starting with 04 (10 digits)">
     
     <label class="auth-label">Medical conditions / notes (optional)</label>
     <textarea class="auth-input" id="profileMedical" rows="3" placeholder="Any medical conditions, injuries, or allergies we should know about..." style="resize:vertical;"></textarea>
