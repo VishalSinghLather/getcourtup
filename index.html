@@ -4278,34 +4278,42 @@
       if (!user) return;
       userName = user.name;
     } else {
-      // Create new user
+      // Create new user (no auth account - manager-created only)
       const name = document.getElementById('newPlayerName').value.trim();
       const email = document.getElementById('newPlayerEmail').value.trim();
       const phone = document.getElementById('newPlayerPhone').value.trim();
       
-      if (!name || !email || !phone) {
-        showAppToast('Please fill all fields');
+      if (!name) {
+        showAppToast('Please enter player name');
         return;
       }
       
-      // Check if email already exists
-      const existingUser = platform.users.find(u => u.email === email);
-      if (existingUser) {
-        showAppToast('User with this email already exists');
-        return;
+      // Validate phone if provided
+      if (phone) {
+        const phoneDigits = phone.replace(/\s/g, '');
+        if (!/^04\d{8}$/.test(phoneDigits)) {
+          showAppToast('Phone must be Australian mobile (04XXXXXXXX - 10 digits)');
+          return;
+        }
       }
       
-      // Generate a temporary password (they can change it later)
-      const tempPassword = 'Court' + Math.random().toString(36).slice(-8);
+      // Check if email already exists (only if email provided)
+      if (email) {
+        const existingUser = platform.users.find(u => u.email === email);
+        if (existingUser) {
+          showAppToast('User with this email already exists');
+          return;
+        }
+      }
       
-      // Create user in database
+      // Create user in database (without auth account)
       const { data: newUser, error: userError } = await sb.from('users').insert({
         name,
-        email,
-        phone,
-        password: tempPassword,
+        email: email || null,
+        phone: phone || null,
         role: 'player',
-        blocked: false
+        blocked: false,
+        auth_id: null // No login access - manager-created only
       }).select().single();
       
       if (userError) {
@@ -4313,16 +4321,6 @@
         showAppToast('Error creating user: ' + userError.message);
         return;
       }
-      
-      // Send welcome email with login credentials
-      sendNotification({
-        type: 'new_user_created',
-        playerName: name,
-        playerEmail: email,
-        playerPhone: phone,
-        tempPassword: tempPassword,
-        loginUrl: window.location.origin
-      });
       
       // Add to local state
       platform.users.push({
@@ -4336,6 +4334,8 @@
       
       userId = newUser.id;
       userName = newUser.name;
+      
+      showAppToast(`Player ${name} created (no login access)`);
     }
     
     // Create booking as "awaiting_payment" (manager will mark as paid after receiving payment)
@@ -5079,13 +5079,17 @@
       <!-- New player form -->
       <div id="addNewPlayer" style="display:none;">
         <label class="auth-label">Player name *</label>
-        <input type="text" class="auth-input" id="newPlayerName" placeholder="John Smith">
+        <input type="text" class="auth-input" id="newPlayerName" placeholder="John Smith" required>
         
-        <label class="auth-label">Email *</label>
+        <label class="auth-label">Email (optional)</label>
         <input type="email" class="auth-input" id="newPlayerEmail" placeholder="john@example.com">
         
-        <label class="auth-label">Phone *</label>
-        <input type="tel" class="auth-input" id="newPlayerPhone" placeholder="04XX XXX XXX">
+        <label class="auth-label">Phone (optional)</label>
+        <input type="tel" class="auth-input" id="newPlayerPhone" placeholder="04XX XXX XXX" pattern="04[0-9]{8}" maxlength="10">
+        
+        <div style="background:#FFF3EC; border:1px solid #FFD4B8; border-radius:8px; padding:10px; margin-top:10px; font-size:11px; color:#8B5000;">
+          ⚠️ Without email, this player cannot create their own account or login. You'll manage their bookings.
+        </div>
       </div>
     </div>
     
