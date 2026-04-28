@@ -10,25 +10,29 @@
 <meta property="og:url" content="https://www.getcourtup.com.au">
 <meta property="og:type" content="website">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+
   function openPlayerProfile() {
     if (!platform.currentUser) {
+      console.error('No current user - cannot open profile');
       showAppToast('Please log in first');
       return;
     }
-    // Load current user data into form fields
-    document.getElementById('profileName').value = platform.currentUser.name || '';
-    document.getElementById('profileEmail').value = platform.currentUser.email || '';
-    document.getElementById('profilePhone').value = platform.currentUser.phone || '';
-    document.getElementById('profileGender').value = platform.currentUser.gender || '';
-    document.getElementById('profileDOB').value = platform.currentUser.dob || '';
-    document.getElementById('profileEmergencyName').value = platform.currentUser.emergencyName || '';
-    document.getElementById('profileEmergencyPhone').value = platform.currentUser.emergencyPhone || '';
-    document.getElementById('profileMedical').value = platform.currentUser.medicalNotes || '';
-    document.getElementById('profileSuccess').style.display = 'none';
-    document.getElementById('playerProfileModal').classList.add('open');
-  }
+    
+    try {
+      // Load current user data
+      document.getElementById('profileName').value = platform.currentUser.name || '';
+      document.getElementById('profileEmail').value = platform.currentUser.email || '';
+      document.getElementById('profilePhone').value = platform.currentUser.phone || '';
+      document.getElementById('profileGender').value = platform.currentUser.gender || '';
+      document.getElementById('profileDOB').value = platform.currentUser.dob || '';
+      document.getElementById('profileEmergencyName').value = platform.currentUser.emergencyName || '';
+      document.getElementById('profileEmergencyPhone').value = platform.currentUser.emergencyPhone || '';
+      document.getElementById('profileMedical').value = platform.currentUser.medicalNotes || '';
+      
+      document.getElementById('profileSuccess').style.display = 'none';
+      document.getElementById('playerProfileModal').classList.add('open');
+    }
 
   function closePlayerProfile() {
     document.getElementById('playerProfileModal').classList.remove('open');
@@ -42,34 +46,16 @@
     const emergencyName = document.getElementById('profileEmergencyName').value.trim();
     const emergencyPhone = document.getElementById('profileEmergencyPhone').value.trim();
     const medicalNotes = document.getElementById('profileMedical').value.trim();
-
+    
     if (!name || !phone) {
       showAppToast('Please fill in name and phone');
       return;
     }
-
-    // Update in database - only update columns that exist in users table
+    
+    // Update in database
     try {
-      const { error } = await sb.from('users').update({
-        name,
-        phone
-      }).eq('id', platform.currentUser.id);
+      const { error }
 
-      if (error) throw error;
-
-      // Update local state
-      platform.currentUser = {
-        ...platform.currentUser,
-        name, phone, gender, dob,
-        emergencyName, emergencyPhone, medicalNotes
-      };
-
-      document.getElementById('profileSuccess').style.display = 'block';
-      setTimeout(closePlayerProfile, 1500);
-    } catch(e) {
-      showAppToast('Error saving profile: ' + (e.message || 'please try again'));
-    }
-  }
 </script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -3438,10 +3424,10 @@
     const s = platform.platformSessions.find(x => x.id === sid);
     if (!s) return;
     
-    // If user already has a booking, re-show their PayID info instead of blocking
-    const existingBooking = (s.bookings || []).find(b => b.userId === platform.currentUser.id && b.status !== 'cancelled' && b.status !== 'removed_by_manager');
-    if (existingBooking || s.bookedUserIds.includes(platform.currentUser.id)) {
-      reshowPayId(sid);
+    // Check if user already has ANY booking (paid or unpaid) for this session
+    const existingBooking = (s.bookings || []).find(b => b.userId === platform.currentUser.id);
+    if (existingBooking || s.bookedUserIds.includes(platform.currentUser.id)) { 
+      showAppToast("You already have a booking for this session!"); 
       return; 
     }
     
@@ -3490,8 +3476,13 @@
     document.getElementById("payIdModal").classList.add("open");
   }
   async function confirmAppBooking() {
+    console.log('confirmAppBooking called');
     const s = platform.platformSessions.find(x => x.id === platform.bookingSessionId);
-    if (!s) return;
+    if (!s) {
+      console.error('Session not found:', platform.bookingSessionId);
+      return;
+    }
+    console.log('Booking session:', s);
 
     const basePrice = s.price;
     const qty = bulkBookingQty;
@@ -3500,6 +3491,8 @@
     if (qty === 5) discount = 0.05;
     if (qty === 10) discount = 0.10;
     const finalPrice = Math.round(totalBase * (1 - discount));
+    
+    console.log('Booking details:', { qty, basePrice, totalBase, discount, finalPrice });
 
     const { data: newBooking, error } = await sb.from('bookings').insert({
       user_id: platform.currentUser.id,
@@ -3520,13 +3513,17 @@
       console.error("BOOKING ERROR:", error);
       return;
     }
+    
+    console.log('Booking created successfully:', newBooking);
 
     s.bookedUserIds.push(platform.currentUser.id);
     if (!s.bookings) s.bookings = [];
     s.bookings.push({
       userId: platform.currentUser.id,
       bookedAt: newBooking.booked_at,
-      amountPaid: s.price,
+      amountPaid: finalPrice,  // Use the discounted final price
+      quantity: qty,
+      discountPercent: Math.round(discount * 100),
       status: "awaiting_payment",
       dbId: newBooking.id
     });
@@ -3538,7 +3535,9 @@
       playerEmail: platform.currentUser.email,
       playerPhone: platform.currentUser.phone,
       sessionInfo: `${formatSessionDate(s.startsAt, s.date)} ${s.time} · ${s.court}`,
-      amount: s.price,
+      amount: finalPrice,  // Send actual amount they need to pay
+      quantity: qty,
+      discount: Math.round(discount * 100),
       reference: buildRef(s, platform.currentUser)
     });
 
@@ -3645,9 +3644,9 @@
   function renderManagerStats() {
     const totalBookings = platform.platformSessions.reduce((acc, s) => acc + s.bookedUserIds.length, 0);
     
-    // Calculate revenue from confirmed/paid/attended bookings
+    // Calculate revenue from PAID bookings only
     const revenue = platform.platformSessions.reduce((acc, s) => {
-      const paidBookings = (s.bookings || []).filter(b => b.status === 'paid' || b.status === 'confirmed' || b.status === 'attended');
+      const paidBookings = (s.bookings || []).filter(b => b.status === 'paid');
       return acc + paidBookings.reduce((sum, b) => sum + (b.amountPaid || 0), 0);
     }, 0);
     
@@ -4607,7 +4606,7 @@
     </div>
     <div style="display:flex; gap:8px; margin-top:16px;">
       <button class="btn-small ghost" onclick="closeBookModal()" style="flex:1;">Cancel</button>
-      <button class="btn-small green" id="payBookBtn" onclick="this.disabled=true; this.textContent='Booking…'; confirmAppBooking().finally(()=>{ this.disabled=false; this.textContent='Pay & book →'; })" style="flex:1;">Pay & book →</button>
+      <button class="btn-small green" onclick="confirmAppBooking()" style="flex:1;">Pay & book →</button>
     </div>
   </div>
 </div>
