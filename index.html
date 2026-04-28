@@ -2145,8 +2145,8 @@
 
   // ============ SUPABASE SETUP ============
   const SUPABASE_URL = "https://lfhnkgzellqtwzzioaib.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_d6PYfXt-G2gLwRxOyzEFng_LK6VbEWN";
-  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaG5rZ3plbGxxdHd6emlvYWliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU2MzEyNjAsImV4cCI6MjA2MTIwNzI2MH0.XWiA4BIDl7_UiAvLrGLXRcw5SDVVRY0S36XZ9Fk_R2o";
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -2157,15 +2157,17 @@
   // Helper: fire an email notification via the Supabase Edge Function
   async function sendNotification(payload) {
     try {
-      await fetch(`${SUPABASE_URL}/functions/v1/notify-booking`, {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/notify-booking`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "apikey": SUPABASE_KEY,
-          "Authorization": `Bearer ${SUPABASE_KEY}`
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify(payload)
       });
+      const result = await response.json();
+      console.log('Email notification sent:', result);
     } catch (e) {
       console.warn("Email notification failed (non-blocking):", e);
     }
