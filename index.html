@@ -10,53 +10,7 @@
 <meta property="og:url" content="https://www.getcourtup.com.au">
 <meta property="og:type" content="website">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-
-  function openPlayerProfile() {
-    if (!platform.currentUser) {
-      console.error('No current user - cannot open profile');
-      showAppToast('Please log in first');
-      return;
-    }
-    
-    try {
-      // Load current user data
-      document.getElementById('profileName').value = platform.currentUser.name || '';
-      document.getElementById('profileEmail').value = platform.currentUser.email || '';
-      document.getElementById('profilePhone').value = platform.currentUser.phone || '';
-      document.getElementById('profileGender').value = platform.currentUser.gender || '';
-      document.getElementById('profileDOB').value = platform.currentUser.dob || '';
-      document.getElementById('profileEmergencyName').value = platform.currentUser.emergencyName || '';
-      document.getElementById('profileEmergencyPhone').value = platform.currentUser.emergencyPhone || '';
-      document.getElementById('profileMedical').value = platform.currentUser.medicalNotes || '';
-      
-      document.getElementById('profileSuccess').style.display = 'none';
-      document.getElementById('playerProfileModal').classList.add('open');
-    }
-
-  function closePlayerProfile() {
-    document.getElementById('playerProfileModal').classList.remove('open');
-  }
-
-  async function savePlayerProfile() {
-    const name = document.getElementById('profileName').value.trim();
-    const phone = document.getElementById('profilePhone').value.trim();
-    const gender = document.getElementById('profileGender').value;
-    const dob = document.getElementById('profileDOB').value;
-    const emergencyName = document.getElementById('profileEmergencyName').value.trim();
-    const emergencyPhone = document.getElementById('profileEmergencyPhone').value.trim();
-    const medicalNotes = document.getElementById('profileMedical').value.trim();
-    
-    if (!name || !phone) {
-      showAppToast('Please fill in name and phone');
-      return;
-    }
-    
-    // Update in database
-    try {
-      const { error }
-
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -4096,6 +4050,84 @@
     } catch (e) {
       err.textContent = 'Failed to send message. Please email getcourtupbookings@gmail.com directly.';
       err.classList.add('show');
+    }
+  }
+
+
+
+  function openPlayerProfile() {
+    if (!platform.currentUser) {
+      console.error('No current user - cannot open profile');
+      showAppToast('Please log in first');
+      return;
+    }
+    
+    try {
+      document.getElementById('profileName').value = platform.currentUser.name || '';
+      document.getElementById('profileEmail').value = platform.currentUser.email || '';
+      document.getElementById('profilePhone').value = platform.currentUser.phone || '';
+      document.getElementById('profileGender').value = platform.currentUser.gender || '';
+      document.getElementById('profileDOB').value = platform.currentUser.dob || '';
+      document.getElementById('profileEmergencyName').value = platform.currentUser.emergencyName || '';
+      document.getElementById('profileEmergencyPhone').value = platform.currentUser.emergencyPhone || '';
+      document.getElementById('profileMedical').value = platform.currentUser.medicalNotes || '';
+      document.getElementById('profileSuccess').style.display = 'none';
+      document.getElementById('playerProfileModal').classList.add('open');
+    } catch (e) {
+      console.error('Error opening player profile:', e);
+      showAppToast('Error opening profile');
+    }
+  }
+
+  function closePlayerProfile() {
+    document.getElementById('playerProfileModal').classList.remove('open');
+  }
+
+  async function savePlayerProfile() {
+    const name = document.getElementById('profileName').value.trim();
+    const phone = document.getElementById('profilePhone').value.trim();
+    const gender = document.getElementById('profileGender').value;
+    const dob = document.getElementById('profileDOB').value;
+    const emergencyName = document.getElementById('profileEmergencyName').value.trim();
+    const emergencyPhone = document.getElementById('profileEmergencyPhone').value.trim();
+    const medicalNotes = document.getElementById('profileMedical').value.trim();
+    
+    if (!name || !phone) {
+      showAppToast('Please fill in name and phone');
+      return;
+    }
+    
+    try {
+      const { error } = await sb.from('users').update({
+        name,
+        phone,
+        gender: gender || null,
+        dob: dob || null,
+        emergency_contact_name: emergencyName || null,
+        emergency_contact_phone: emergencyPhone || null,
+        medical_notes: medicalNotes || null
+      }).eq('id', platform.currentUser.id);
+      
+      if (error) throw error;
+      
+      platform.currentUser.name = name;
+      platform.currentUser.phone = phone;
+      platform.currentUser.gender = gender;
+      platform.currentUser.dob = dob;
+      platform.currentUser.emergencyName = emergencyName;
+      platform.currentUser.emergencyPhone = emergencyPhone;
+      platform.currentUser.medicalNotes = medicalNotes;
+      
+      document.getElementById('appUserName').textContent = name.split(' ')[0];
+      document.getElementById('profileSuccess').style.display = 'block';
+      showAppToast('✓ Profile updated!');
+      
+      setTimeout(() => {
+        document.getElementById('profileSuccess').style.display = 'none';
+      }, 2000);
+    } catch (e) {
+      console.error('Profile update error:', e);
+      showAppToast('Failed to update profile');
     }
   }
 
