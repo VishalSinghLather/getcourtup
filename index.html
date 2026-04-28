@@ -3383,12 +3383,24 @@
     }
     console.log('Found session:', s);
     
-    // Check if user already has ANY booking (paid or unpaid) for this session
-    const existingBooking = (s.bookings || []).find(b => b.userId === platform.currentUser.id);
-    if (existingBooking || s.bookedUserIds.includes(platform.currentUser.id)) { 
-      console.log('User already booked this session');
+    // Check if user already has an ACTIVE booking (awaiting_payment or paid) for this session
+    const existingBooking = (s.bookings || []).find(b => 
+      String(b.userId) === String(platform.currentUser.id) && 
+      (b.status === 'awaiting_payment' || b.status === 'paid')
+    );
+    
+    console.log('Existing active booking:', existingBooking);
+    
+    if (existingBooking) { 
+      console.log('User already has active booking for this session');
       showAppToast("You already have a booking for this session!"); 
       return; 
+    }
+    
+    if (s.bookedUserIds.includes(platform.currentUser.id)) {
+      console.log('User in bookedUserIds');
+      showAppToast("You already have a booking for this session!"); 
+      return;
     }
     
     if (s.bookedUserIds.length >= s.totalSpots) { 
