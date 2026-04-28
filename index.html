@@ -2674,8 +2674,8 @@
 
   async function uploadCoachPhoto() {
     const photoField = document.getElementById("coachPhotoInput");
-    if (!input || !input.files || !input.files[0]) return null;
-    const file = input.files[0];
+    if (!photoField || !photoField.files || !photoField.files[0]) return null;
+    const file = photoField.files[0];
     const ext = file.name.split(".").pop().toLowerCase();
     const fileName = `coach-profile.${ext}`;
     try {
