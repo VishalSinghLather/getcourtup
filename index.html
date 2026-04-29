@@ -1613,6 +1613,32 @@
       <div class="hero-eyebrow">Play · Improve · Connect</div>
       <h1>Get on court.<br>Get <em>better.</em><br>Get CourtUp.</h1>
       <p class="hero-sub">Sydney's badminton community. Find casual play, get coached, meet players who love the sport — all in one place.</p>
+      <div class="hero-groups">
+        <div class="hero-groups-label">Group coaching for:</div>
+        <div class="hero-groups-pills">
+          <div class="hero-chip active">
+            <span class="chip-icon">🏸</span>
+            <div>
+              <div class="chip-title">Adult beginners</div>
+              <div class="chip-sub">18+ · $45 · Weekends</div>
+            </div>
+          </div>
+          <div class="hero-chip active">
+            <span class="chip-icon">🎯</span>
+            <div>
+              <div class="chip-title">Adult intermediate</div>
+              <div class="chip-sub">Available now · Weekends</div>
+            </div>
+          </div>
+          <div class="hero-chip coming" style="cursor:pointer;" onclick="openWaitlist('Advanced')">
+            <span class="chip-icon">⚡</span>
+            <div style="flex:1;">
+              <div class="chip-title">Adult advanced</div>
+              <div class="chip-sub">Coming soon · <span style="color:var(--green-dark); font-weight:600;">Notify me →</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="hero-actions">
         <a href="#sessions" class="btn-primary green">Browse sessions →</a>
         <a href="#how" class="btn-ghost">How it works</a>
@@ -1662,6 +1688,7 @@
                     <div class="phone-card-title">Roketto Badminton</div>
                     <div class="phone-card-meta">Saturday · 7:00 AM · Court 1</div>
                   </div>
+                  <div class="phone-card-price">$45</div>
                 </div>
                 <span class="phone-level-badge badge-beginner">Beginner</span>
                 <div class="phone-spots">
@@ -1680,6 +1707,7 @@
                     <div class="phone-card-title">Roketto Badminton</div>
                     <div class="phone-card-meta">Saturday · 9:00 AM · Court 2</div>
                   </div>
+                  <div class="phone-card-price">$45</div>
                 </div>
                 <span class="phone-level-badge badge-beginner">Beginner</span>
                 <div class="phone-spots">
@@ -1699,6 +1727,7 @@
                     <div class="phone-card-title">Roketto Badminton</div>
                     <div class="phone-card-meta">Sunday · 8:00 AM · Court 2</div>
                   </div>
+                  <div class="phone-card-price">$45</div>
                 </div>
                 <span class="phone-level-badge badge-beginner">Beginner</span>
                 <div class="phone-spots">
@@ -1929,8 +1958,8 @@
 
   function typeBadge(type) {
     if (type === 'social') return '<span class="badge" style="background:#FFF8E1;color:#B45309;border-color:#F59E0B;">🤝 Social play</span>';
-    if (type === 'competitive') return '<span class="badge" style="background:#FEE2E2;color:#991B1B;border-color:#EF4444;">⚡ Competitive training</span>';
-    if (type === 'learning') return '<span class="badge" style="background:#E8FFF6;color:#00A878;border-color:#00C896;">📚 Adult learning sessions</span>';
+    if (type === 'private') return '<span class="badge" style="background:#1F2937;color:white;border-color:#1F2937;">👤 Private coaching</span>';
+    if (type === 'group') return '<span class="badge" style="background:#E8FFF6;color:#00A878;border-color:#00C896;">👥 Group coaching</span>';
     return '';
   }
 
@@ -3224,10 +3253,6 @@
     document.getElementById("appUserAvatar").textContent = u.name.charAt(0).toUpperCase();
     document.getElementById("userGreeting").textContent = `Hi ${u.name.split(" ")[0]} 👋`;
     renderAppUserSessions();
-    
-    // Update pending payment badge immediately
-    updatePendingBadge();
-    
     // If user came from a session card click, open booking modal right away
     if (platform.pendingBookId) {
       const pid = platform.pendingBookId;
@@ -3460,7 +3485,7 @@
         const displayPrice = myBooking ? (myBooking.amountPaid || s.price) : s.price;
         
         // Session type badge
-        const sessionTypeIcons = { 'social': '🤝', 'competitive': '⚡', 'learning': '📚' };
+        const sessionTypeIcons = { 'social': '🤝', 'group': '👥', 'private': '👤' };
         const sessionType = s.sessionType || 'group';
         const sessionTypeIcon = sessionTypeIcons[sessionType] || '👥';
         const sessionTypeLabel = sessionType.charAt(0).toUpperCase() + sessionType.slice(1);
@@ -3971,7 +3996,7 @@
           const isPaid = b.booking.status === "paid";
           
           // Session type badge
-          const sessionTypeIcons = { 'social': '🤝', 'competitive': '⚡', 'learning': '📚' };
+          const sessionTypeIcons = { 'social': '🤝', 'group': '👥', 'private': '👤' };
           const sessionType = b.session.sessionType || 'group';
           const sessionTypeIcon = sessionTypeIcons[sessionType] || '👥';
           
@@ -4162,7 +4187,6 @@
     nextSat.setDate(today.getDate() + daysToSat);
     document.getElementById("sf_specificDate").value = nextSat.toISOString().split("T")[0];
     document.getElementById("sf_time").value = "";
-    document.getElementById("sf_duration").value = "60"; // Default to 1 hour
     document.getElementById("sf_level").value = "Beginner";
     document.getElementById("sf_age").value = "18+";
     document.getElementById("sf_price").value = "45";
@@ -4937,8 +4961,8 @@
       <div class="filter-pills" style="margin-bottom:20px;">
         <button class="app-pill active" onclick="appUserFilter('All', this)">All</button>
         <button class="app-pill" onclick="appUserFilter('social', this)">🤝 Social</button>
-        <button class="app-pill" onclick="appUserFilter('competitive', this)">⚡ Competitive</button>
-        <button class="app-pill" onclick="appUserFilter('learning', this)">📚 Learning</button>
+        <button class="app-pill" onclick="appUserFilter('group', this)">👥 Group</button>
+        <button class="app-pill" onclick="appUserFilter('private', this)">👤 Private</button>
         <button class="app-pill" onclick="appUserFilter('Monday', this)">Mon</button>
         <button class="app-pill" onclick="appUserFilter('Tuesday', this)">Tue</button>
         <button class="app-pill" onclick="appUserFilter('Wednesday', this)">Wed</button>
@@ -5089,8 +5113,8 @@
         <label class="auth-label">Session type</label>
         <select class="auth-input" id="sf_type" onchange="onSessionTypeChange()">
           <option value="social">🤝 Social play</option>
-          <option value="competitive">⚡ Competitive training</option>
-          <option value="learning">📚 Adult learning sessions</option>
+          <option value="group">👥 Group coaching</option>
+          <option value="private">👤 Private coaching</option>
         </select>
       </div>
       <div>
@@ -5224,8 +5248,8 @@
         <label class="auth-label">Session type</label>
         <select class="auth-input" id="rec_type">
           <option value="social">🤝 Social play</option>
-          <option value="competitive">⚡ Competitive training</option>
-          <option value="learning">📚 Adult learning sessions</option>
+          <option value="group">👥 Group coaching</option>
+          <option value="private">👤 Private coaching</option>
         </select>
       </div>
       <div>
