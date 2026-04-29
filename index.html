@@ -3066,10 +3066,17 @@
     const email = document.getElementById("signupEmail").value.trim().toLowerCase();
     const phone = document.getElementById("signupPhone").value.trim();
     const pw = document.getElementById("signupPw").value;
+    const acceptTerms = document.getElementById("signupAcceptTerms").checked;
     const err = document.getElementById("signupError");
     
     if (!name || !email || !phone || !pw) {
       err.textContent = "Please fill in all fields";
+      err.classList.add("show");
+      return;
+    }
+    
+    if (!acceptTerms) {
+      err.textContent = "Please accept the Terms & Conditions and Privacy Policy";
       err.classList.add("show");
       return;
     }
@@ -4809,6 +4816,15 @@
       <input type="tel" class="auth-input" id="signupPhone" placeholder="04XX XXX XXX" pattern="04[0-9]{8}" maxlength="10" title="Australian mobile number starting with 04 (10 digits)">
       <label class="auth-label">Password</label>
       <input type="password" class="auth-input" id="signupPw" placeholder="Minimum 6 characters">
+      
+      <!-- Terms & Conditions Checkbox -->
+      <div style="margin:16px 0; display:flex; align-items:start; gap:8px;">
+        <input type="checkbox" id="signupAcceptTerms" style="margin-top:3px; width:16px; height:16px; cursor:pointer;">
+        <label for="signupAcceptTerms" style="font-size:12px; color:var(--text-mid); line-height:1.4; cursor:pointer;">
+          I agree to the <a href="https://www.termsfeed.com/live/71aa9aa3-1119-4d64-ac0a-9e733636ed1d" target="_blank" style="color:var(--accent); text-decoration:none;">Terms & Conditions</a> and <a href="https://www.privacypolicies.com/live/c4674a4e-1437-4f33-9be5-828b56dfb961" target="_blank" style="color:var(--accent); text-decoration:none;">Privacy Policy</a>
+        </label>
+      </div>
+      
       <div class="auth-error" id="signupError"></div>
       <button class="auth-btn green" onclick="userSignup()">Create account →</button>
     </div>
@@ -5478,6 +5494,20 @@ document.addEventListener('DOMContentLoaded', function() {
     <button class="auth-btn green" onclick="submitRating()" id="ratingBtn" style="margin-top:16px;">Submit rating →</button>
   </div>
 </div>
+
+<!-- Footer with legal links -->
+<footer style="text-align:center; padding:40px 20px; color:#999; font-size:13px; border-top:1px solid #eee; margin-top:60px;">
+  <div style="margin-bottom:10px;">
+    <a href="https://www.privacypolicies.com/live/c4674a4e-1437-4f33-9be5-828b56dfb961" target="_blank" style="color:#666; text-decoration:none; margin:0 12px;">Privacy Policy</a>
+    <span style="color:#ddd;">|</span>
+    <a href="https://www.termsfeed.com/live/71aa9aa3-1119-4d64-ac0a-9e733636ed1d" target="_blank" style="color:#666; text-decoration:none; margin:0 12px;">Terms & Conditions</a>
+    <span style="color:#ddd;">|</span>
+    <a href="mailto:getcourtupbookings@gmail.com" style="color:#666; text-decoration:none; margin:0 12px;">Contact</a>
+  </div>
+  <div style="font-size:12px; color:#bbb; margin-top:8px;">
+    © 2026 GetCourtUp · Badminton Coaching & Court Bookings
+  </div>
+</footer>
 
 </body>
 </html>
