@@ -2331,6 +2331,7 @@
           date: s.session_date,
           time: s.session_time,
           startsAt: s.starts_at || getNextDayISO(s.session_date, convertTo24(s.session_time)),
+          duration: s.duration || 60,
           level: s.level,
           ageRange: s.age_range,
           totalSpots: s.total_spots,
@@ -4449,6 +4450,7 @@
     const dateStr = document.getElementById('rec_startDate').value;
     const time = document.getElementById('rec_time').value.trim();
     const weeks = parseInt(document.getElementById('rec_weeks').value);
+    const duration = parseInt(document.getElementById('rec_duration').value);
     
     if (!dateStr) { showAppToast('Please pick a start date'); return; }
     if (!time) { showAppToast('Please enter a time'); return; }
@@ -4490,6 +4492,7 @@
         session_date: dayName,
         session_time: time,
         starts_at: sessionDate.toISOString(),
+        duration: duration || 60,
         level,
         age_range: ageRange,
         price,
@@ -4518,6 +4521,7 @@
         date: ns.session_date,
         time: ns.session_time,
         startsAt: ns.starts_at,
+        duration: ns.duration || 60,
         level: ns.level,
         ageRange: ns.age_range,
         price: ns.price,
@@ -5176,7 +5180,19 @@
       </div>
       <div>
         <label class="auth-label">Time</label>
-        <input type="text" class="auth-input" id="rec_time" placeholder="7:00 AM">
+        <input type="text" class="auth-input" id="rec_time" placeholder="7:00 PM">
+      </div>
+      <div>
+        <label class="auth-label">Duration</label>
+        <select class="auth-input" id="rec_duration">
+          <option value="60">1 hour</option>
+          <option value="75">1.25 hours</option>
+          <option value="90">1.5 hours</option>
+          <option value="105">1.75 hours</option>
+          <option value="120">2 hours</option>
+          <option value="150">2.5 hours</option>
+          <option value="180">3 hours</option>
+        </select>
       </div>
       <div>
         <label class="auth-label">Number of weeks</label>
