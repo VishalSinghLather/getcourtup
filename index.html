@@ -2355,9 +2355,34 @@
         };
       });
       console.log('Data loaded from Supabase:', platform.users.length, 'users,', platform.platformSessions.length, 'sessions');
+      
+      // Update pending payment badge for players
+      if (platform.role === 'user' && platform.currentUser) {
+        updatePendingBadge();
+      }
     } catch (err) {
       console.error('Failed to load data:', err);
       showAppToast('Connection error — please refresh');
+    }
+  }
+  
+  function updatePendingBadge() {
+    if (!platform.currentUser || platform.role !== 'user') return;
+    
+    const mySessions = platform.platformSessions.filter(s => s.bookedUserIds.includes(platform.currentUser.id));
+    const pendingPayments = mySessions.filter(s => {
+      const myBooking = (s.bookings || []).find(b => b.userId === platform.currentUser.id && b.status === "awaiting_payment");
+      return myBooking;
+    });
+    
+    const badge = document.getElementById('pendingBadge');
+    if (badge) {
+      if (pendingPayments.length > 0) {
+        badge.textContent = pendingPayments.length;
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
+      }
     }
   }
 
@@ -3433,6 +3458,9 @@
       return myBooking;
     });
     
+    // Update badge
+    updatePendingBadge();
+    
     // Pending payment banner
     const pendingBanner = pendingPayments.length > 0 ? `
       <div style="background:#FFF3EC; border:1px solid #FF6B35; border-radius:12px; padding:16px; margin-bottom:20px;">
@@ -4191,6 +4219,7 @@
       } catch (e) {}
     }
     document.getElementById("sf_time").value = s.time;
+    document.getElementById("sf_duration").value = s.duration || 60;
     document.getElementById("sf_level").value = s.level;
     document.getElementById("sf_age").value = s.ageRange;
     document.getElementById("sf_price").value = s.price;
@@ -4564,6 +4593,7 @@
       date: dayName,
       time: time,
       startsAt: startsAt.toISOString(),
+      duration: parseInt(document.getElementById("sf_duration").value) || 60,
       level: document.getElementById("sf_level").value,
       ageRange: document.getElementById("sf_age").value.trim(),
       price: parseInt(document.getElementById("sf_price").value),
@@ -4583,6 +4613,7 @@
       session_date: data.date,
       session_time: data.time,
       starts_at: data.startsAt,
+      duration: data.duration,
       level: data.level,
       age_range: data.ageRange,
       price: data.price,
@@ -4921,7 +4952,10 @@
     </div>
     <div class="app-tabs">
       <button class="app-tab active" onclick="userTab('browse', this)">Browse sessions</button>
-      <button class="app-tab" onclick="userTab('mybookings', this)">My bookings</button>
+      <button class="app-tab" onclick="userTab('mybookings', this)" id="myBookingsTab">
+        My bookings
+        <span id="pendingBadge" style="display:none; margin-left:6px; background:#FF6B35; color:white; border-radius:10px; padding:2px 7px; font-size:11px; font-weight:700; min-width:18px; text-align:center;"></span>
+      </button>
     </div>
     <div class="app-tab-content active" id="utab-browse">
       <div class="filter-pills" style="margin-bottom:20px;">
@@ -5061,7 +5095,19 @@
       </div>
       <div>
         <label class="auth-label">Time</label>
-        <input type="text" class="auth-input" id="sf_time" placeholder="7:00 AM">
+        <input type="text" class="auth-input" id="sf_time" placeholder="7:00 PM">
+      </div>
+      <div>
+        <label class="auth-label">Duration</label>
+        <select class="auth-input" id="sf_duration">
+          <option value="60">1 hour</option>
+          <option value="75">1.25 hours</option>
+          <option value="90">1.5 hours</option>
+          <option value="105">1.75 hours</option>
+          <option value="120">2 hours</option>
+          <option value="150">2.5 hours</option>
+          <option value="180">3 hours</option>
+        </select>
       </div>
       <div>
         <label class="auth-label">Session type</label>
