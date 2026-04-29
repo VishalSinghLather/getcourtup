@@ -1818,8 +1818,8 @@
 <section id="venues">
   <div class="section-inner">
     <div class="section-label">Partner venues</div>
-    <h2 class="section-title">Our home court</h2>
-    <p class="section-sub">Currently running adult beginner coaching sessions at Roketto Badminton, 22 Carter St Lidcombe NSW 2141. More venues coming soon.</p>
+    <h2 class="section-title">Our locations</h2>
+    <p class="section-sub">Currently running coaching sessions and socials. More venues coming soon.</p>
     <div class="venues-grid" style="grid-template-columns: 1fr 1fr; max-width: 800px;">
       <div class="venue-card">
         <div class="venue-banner" style="background: linear-gradient(135deg, #E0FBF4, #9FE1CB);">🏸</div>
@@ -3307,6 +3307,13 @@
     if (platform.appFilters.days.size > 0) {
       list = list.filter(s => platform.appFilters.days.has(s.date));
     }
+    
+    // Sort sessions by date and time (earliest first)
+    list = list.sort((a, b) => {
+      const dateA = new Date(a.startsAt);
+      const dateB = new Date(b.startsAt);
+      return dateA - dateB;
+    });
     if (list.length === 0) {
       const activeTypes = platform.appFilters ? Array.from(platform.appFilters.types) : [];
       const activeDays = platform.appFilters ? Array.from(platform.appFilters.days) : [];
@@ -3396,7 +3403,15 @@
   }
   function renderMyBookings() {
     const content = document.getElementById("myBookingsContent");
-    const mySessions = platform.platformSessions.filter(s => s.bookedUserIds.includes(platform.currentUser.id));
+    let mySessions = platform.platformSessions.filter(s => s.bookedUserIds.includes(platform.currentUser.id));
+    
+    // Sort sessions by date and time (earliest first)
+    mySessions = mySessions.sort((a, b) => {
+      const dateA = new Date(a.startsAt);
+      const dateB = new Date(b.startsAt);
+      return dateA - dateB;
+    });
+    
     if (mySessions.length === 0) {
       content.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div>You haven\'t booked any sessions yet.</div>';
       return;
@@ -3411,7 +3426,26 @@
       console.log('Status:', myBooking ? myBooking.status : 'NO BOOKING FOUND');
     });
     
-    content.innerHTML = `<div class="app-sessions-grid">${
+    // Check for pending payments
+    const pendingPayments = mySessions.filter(s => {
+      const myBooking = (s.bookings || []).find(b => b.userId === platform.currentUser.id && b.status === "awaiting_payment");
+      return myBooking;
+    });
+    
+    // Pending payment banner
+    const pendingBanner = pendingPayments.length > 0 ? `
+      <div style="background:#FFF3EC; border:1px solid #FF6B35; border-radius:12px; padding:16px; margin-bottom:20px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font-size:24px;">⚠️</div>
+          <div style="flex:1;">
+            <div style="font-weight:700; color:#CC4A10; margin-bottom:4px;">Pending Payments (${pendingPayments.length})</div>
+            <div style="font-size:13px; color:#8B5000;">You have ${pendingPayments.length} booking${pendingPayments.length > 1 ? 's' : ''} awaiting PayID payment. Please complete payment to secure your spot${pendingPayments.length > 1 ? 's' : ''}.</div>
+          </div>
+        </div>
+      </div>
+    ` : '';
+    
+    content.innerHTML = pendingBanner + `<div class="app-sessions-grid">${
       mySessions.map(s => {
         const hrs = hoursUntil(s.startsAt);
         const policy = refundPolicy(hrs);
