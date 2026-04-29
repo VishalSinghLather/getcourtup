@@ -4258,7 +4258,7 @@
       if (user) {
         const sessionInfo = b.quantity > 1 
           ? `${b.quantity}-session package starting ${formatSessionDate(s.startsAt, s.date)}`
-          : `${formatSessionDate(s.startsAt, s.date)} ${s.time} · ${s.court}`;
+          : `${formatSessionDate(s.startsAt, s.date)} ${formatTimeRange(s.time, s.duration || 60)} · ${s.court}`;
         
         sendNotification({
           type: "payment_confirmed",
@@ -4267,7 +4267,13 @@
           playerPhone: user.phone,
           sessionInfo: sessionInfo,
           amount: b.amountPaid,
-          quantity: b.quantity || 1
+          quantity: b.quantity || 1,
+          venue: s.venue,
+          court: s.court,
+          time: formatTimeRange(s.time, s.duration || 60),
+          date: formatSessionDate(s.startsAt, s.date),
+          sessionType: s.sessionType,
+          level: s.level
         });
       }
       
