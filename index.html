@@ -3862,81 +3862,134 @@
     
     console.log('Booking details:', { qty, basePrice, totalBase, discount, finalPrice });
 
-    const { data: newBooking, error } = await sb.from('bookings').insert({
-      user_id: platform.currentUser.id,
-      session_id: s.id,
-      amount_paid: finalPrice,
-      quantity: qty,
-      discount_percent: Math.round(discount * 100),
-      status: 'awaiting_payment'
-    }).select().single();
+    // For bulk bookings (5 or 10 sessions), find the next recurring sessions
+    let sessionsToBook = [s];
+    if (qty > 1) {
+      // Get all future sessions at the same venue, court, day, and time
+      const targetDay = s.date; // e.g., "Monday"
+      const targetTime = s.time; // e.g., "7:00 PM"
+      const targetVenue = s.venue;
+      const targetCourt = s.court;
+      
+      // Find matching recurring sessions
+      const matchingSessions = platform.platformSessions
+        .filter(session => 
+          session.date === targetDay &&
+          session.time === targetTime &&
+          session.venue === targetVenue &&
+          session.court === targetCourt &&
+          new Date(session.startsAt) >= new Date(s.startsAt) && // Same or future
+          !session.bookedUserIds.includes(platform.currentUser.id) && // Not already booked
+          session.bookedUserIds.length < session.totalSpots // Not full
+        )
+        .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt))
+        .slice(0, qty); // Take first N sessions
+      
+      if (matchingSessions.length < qty) {
+        showAppToast(`Only ${matchingSessions.length} available sessions found. Cannot book ${qty}-session package.`);
+        return;
+      }
+      
+      sessionsToBook = matchingSessions;
+      console.log(`Found ${sessionsToBook.length} sessions to book:`, sessionsToBook.map(s => s.startsAt));
+    }
 
-    if (error) {
+    // Calculate price per session with discount
+    const pricePerSession = Math.round(finalPrice / sessionsToBook.length);
+    
+    // Create bookings for each session
+    const bookingPromises = sessionsToBook.map(async (session) => {
+      const { data: newBooking, error } = await sb.from('bookings').insert({
+        user_id: platform.currentUser.id,
+        session_id: session.id,
+        amount_paid: pricePerSession,
+        quantity: 1, // Always 1 - this is for THIS session
+        discount_percent: Math.round(discount * 100),
+        status: 'awaiting_payment'
+      }).select().single();
+
+      if (error) {
+        console.error(`BOOKING ERROR for session ${session.id}:`, error);
+        throw error;
+      }
+      
+      return { session, booking: newBooking };
+    });
+
+    try {
+      const results = await Promise.all(bookingPromises);
+      console.log('All bookings created successfully:', results);
+      
+      // Update local state for all booked sessions
+      results.forEach(({ session, booking }) => {
+        session.bookedUserIds.push(platform.currentUser.id);
+        if (!session.bookings) session.bookings = [];
+        session.bookings.push({
+          userId: platform.currentUser.id,
+          bookedAt: booking.booked_at,
+          amountPaid: pricePerSession,
+          quantity: 1,
+          discountPercent: Math.round(discount * 100),
+          status: "awaiting_payment",
+          dbId: booking.id
+        });
+      });
+
+      // Fire booking notification email (non-blocking)
+      const sessionInfo = qty > 1 
+        ? `${qty}-session package: ${sessionsToBook.map(s => formatSessionDate(s.startsAt, s.date)).join(', ')}`
+        : `${formatSessionDate(s.startsAt, s.date)} ${s.time} · ${s.court}`;
+      
+      sendNotification({
+        type: "new_booking",
+        playerName: platform.currentUser.name,
+        playerEmail: platform.currentUser.email,
+        playerPhone: platform.currentUser.phone,
+        sessionInfo: sessionInfo,
+        amount: finalPrice,
+        quantity: qty,
+        discount: Math.round(discount * 100),
+        reference: buildRef(s, platform.currentUser, qty)
+      });
+
+      closeBookModal();
+
+      // Show PayID modal
+      const venueText = qty > 1
+        ? `${s.venue} · ${qty}-session package starting ${formatSessionDate(sessionsToBook[0].startsAt, sessionsToBook[0].date)}`
+        : `${s.venue} · ${formatSessionDate(s.startsAt, s.date)} · ${s.time}`;
+      
+      document.getElementById("payIdVenue").textContent = venueText;
+      document.getElementById("payIdCourt").textContent = s.court;
+      document.getElementById("payIdAmount").textContent = `$${finalPrice}`;
+      
+      if (qty > 1) {
+        document.getElementById("payIdBulkInfo").textContent = `${qty} sessions · ${Math.round(discount * 100)}% discount`;
+      } else {
+        document.getElementById("payIdBulkInfo").textContent = '';
+      }
+      
+      document.getElementById("payIdRef").textContent = buildRef(s, platform.currentUser, qty);
+      document.getElementById("payIdPhone").textContent = platform.payId.phone;
+      document.getElementById("payIdName").textContent = platform.payId.name;
+      document.getElementById("payIdModal").classList.add("open");
+      
+      renderAppUserSessions();
+      renderMyBookings();
+      updatePendingBadge();
+      
+      showAppToast(`✓ Booked ${qty} session${qty > 1 ? 's' : ''}!`);
+      
+    } catch (error) {
       // Check for duplicate booking error
-      if (error.code === '23505' || error.message.includes('duplicate key')) {
-        showAppToast("You already have a booking for this session!");
+      if (error.code === '23505' || error.message?.includes('duplicate key')) {
+        showAppToast("You already have a booking for one of these sessions!");
       } else {
         showAppToast("Booking failed: " + (error.message || "please try again"));
       }
       console.error("BOOKING ERROR:", error);
-      return;
     }
-    
-    console.log('Booking created successfully:', newBooking);
-
-    s.bookedUserIds.push(platform.currentUser.id);
-    if (!s.bookings) s.bookings = [];
-    s.bookings.push({
-      userId: platform.currentUser.id,
-      bookedAt: newBooking.booked_at,
-      amountPaid: finalPrice,
-      quantity: qty,
-      discountPercent: Math.round(discount * 100),
-      status: "awaiting_payment",
-      dbId: newBooking.id
-    });
-
-    // Fire booking notification email (non-blocking)
-    const sessionInfo = qty > 1 
-      ? `${qty}-session package starting ${formatSessionDate(s.startsAt, s.date)} ${s.time} · ${s.court}`
-      : `${formatSessionDate(s.startsAt, s.date)} ${s.time} · ${s.court}`;
-    
-    sendNotification({
-      type: "new_booking",
-      playerName: platform.currentUser.name,
-      playerEmail: platform.currentUser.email,
-      playerPhone: platform.currentUser.phone,
-      sessionInfo: sessionInfo,
-      amount: finalPrice,
-      quantity: qty,
-      discount: Math.round(discount * 100),
-      reference: buildRef(s, platform.currentUser, qty)
-    });
-
-    closeBookModal();
-
-    // Show PayID modal
-    const venueText = qty > 1
-      ? `${s.venue} · ${qty}-session package starting ${formatSessionDate(s.startsAt, s.date)}`
-      : `${s.venue} · ${formatSessionDate(s.startsAt, s.date)} · ${s.time}`;
-    
-    document.getElementById("payIdVenue").textContent = venueText;
-    document.getElementById("payIdCourt").textContent = s.court;
-    const booking = (s.bookings || []).find(b => b.userId === platform.currentUser.id && b.status === 'awaiting_payment');
-    const qtyDisplay = booking && booking.quantity ? booking.quantity : 1;
-    const discountDisplay = booking && booking.discountPercent ? booking.discountPercent : 0;
-    
-    document.getElementById("payIdAmount").textContent = `$${booking ? booking.amountPaid : s.price}`;
-    
-    if (qtyDisplay > 1) {
-      document.getElementById("payIdBulkInfo").textContent = `${qtyDisplay} sessions · ${discountDisplay}% discount`;
-    } else {
-      document.getElementById("payIdBulkInfo").textContent = '';
-    }
-    document.getElementById("payIdRef").textContent = buildRef(s, platform.currentUser, qtyDisplay);
-    document.getElementById("payIdPhone").textContent = platform.payId.phone;
-    document.getElementById("payIdName").textContent = platform.payId.name;
-    document.getElementById("payIdModal").classList.add("open");
+  }
 
     renderAppUserSessions();
   }
