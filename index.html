@@ -4331,6 +4331,21 @@
       }).eq('id', b.dbId);
       if (error) { showAppToast("Error: " + error.message); console.error(error); return; }
       b.status = "removed_by_manager";
+      
+      // Send removal notification to player
+      if (u) {
+        sendNotification({
+          type: "removal",
+          playerName: u.name,
+          playerEmail: u.email,
+          playerPhone: u.phone,
+          sessionInfo: `${formatSessionDate(s.startsAt, s.date)} ${formatTimeRange(s.time, s.duration || 60)} · ${s.court}`,
+          venue: s.venue,
+          court: s.court,
+          date: formatSessionDate(s.startsAt, s.date),
+          time: formatTimeRange(s.time, s.duration || 60)
+        });
+      }
     }
     s.bookedUserIds = s.bookedUserIds.filter(id => id !== uid);
     showAppToast(`${name} removed from session`);
