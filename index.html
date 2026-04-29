@@ -1613,43 +1613,8 @@
       <div class="hero-eyebrow">Play · Improve · Connect</div>
       <h1>Get on court.<br>Get <em>better.</em><br>Get CourtUp.</h1>
       <p class="hero-sub">Sydney's badminton community. Find casual play, get coached, meet players who love the sport — all in one place.</p>
-      <div class="hero-groups">
-       
-
-      <div class="hero-groups">
-        <div class="hero-groups-label">Sessions Available for:</div>
-        <div class="hero-groups-pills">
-          <div class="hero-chip active" onclick="location.href='#sessions'" style="cursor:pointer;">
-            <span class="chip-icon">🏸</span>
-            <div>
-              <div class="chip-title">Available sessions</div>
-              <div class="chip-sub">Browse all upcoming sessions</div>
-            </div>
-          </div>
-          <div class="hero-chip active" onclick="location.href='#sessions'" style="cursor:pointer;">
-            <span class="chip-icon">🤝</span>
-            <div>
-              <div class="chip-title">Fun connect socials</div>
-              <div class="chip-sub">Play & meet new players</div>
-            </div>
-          </div>
-          <div class="hero-chip active" onclick="location.href='#sessions'" style="cursor:pointer;">
-            <span class="chip-icon">👥</span>
-            <div>
-              <div class="chip-title">Group classes adults</div>
-              <div class="chip-sub">Learn together, improve faster</div>
-            </div>
-          </div>
-          <div class="hero-chip active" onclick="location.href='#sessions'" style="cursor:pointer;">
-            <span class="chip-icon">⚡</span>
-            <div>
-              <div class="chip-title">Competitive learning</div>
-             <div class="chip-sub">Private and Small Group</div>
-              <div class="chip-sub">Take your game to the next level</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div class="hero-actions">
+        <a href="#sessions" class="btn-primary green">Browse sessions →</a>
         <a href="#how" class="btn-ghost">How it works</a>
       </div>
       <div class="hero-stats">
@@ -1697,7 +1662,6 @@
                     <div class="phone-card-title">Roketto Badminton</div>
                     <div class="phone-card-meta">Saturday · 7:00 AM · Court 1</div>
                   </div>
-                  <div class="phone-card-price">$45</div>
                 </div>
                 <span class="phone-level-badge badge-beginner">Beginner</span>
                 <div class="phone-spots">
@@ -1716,7 +1680,6 @@
                     <div class="phone-card-title">Roketto Badminton</div>
                     <div class="phone-card-meta">Saturday · 9:00 AM · Court 2</div>
                   </div>
-                  <div class="phone-card-price">$45</div>
                 </div>
                 <span class="phone-level-badge badge-beginner">Beginner</span>
                 <div class="phone-spots">
@@ -1736,7 +1699,6 @@
                     <div class="phone-card-title">Roketto Badminton</div>
                     <div class="phone-card-meta">Sunday · 8:00 AM · Court 2</div>
                   </div>
-                  <div class="phone-card-price">$45</div>
                 </div>
                 <span class="phone-level-badge badge-beginner">Beginner</span>
                 <div class="phone-spots">
@@ -1967,8 +1929,8 @@
 
   function typeBadge(type) {
     if (type === 'social') return '<span class="badge" style="background:#FFF8E1;color:#B45309;border-color:#F59E0B;">🤝 Social play</span>';
-    if (type === 'private') return '<span class="badge" style="background:#1F2937;color:white;border-color:#1F2937;">👤 Private coaching</span>';
-    if (type === 'group') return '<span class="badge" style="background:#E8FFF6;color:#00A878;border-color:#00C896;">👥 Group coaching</span>';
+    if (type === 'competitive') return '<span class="badge" style="background:#FEE2E2;color:#991B1B;border-color:#EF4444;">⚡ Competitive training</span>';
+    if (type === 'learning') return '<span class="badge" style="background:#E8FFF6;color:#00A878;border-color:#00C896;">📚 Adult learning sessions</span>';
     return '';
   }
 
@@ -2066,7 +2028,7 @@
           <div class="session-card-top">
             <div>
               <div class="session-venue">${s.venue}</div>
-              <div class="session-meta">${dateFmt(s)} · ${s.time} · ${s.court}</div>
+              <div class="session-meta">${dateFmt(s)} · ${formatTimeRange(s.time, s.duration || 60)} · ${s.court}</div>
               <div class="session-meta" style="margin-top:2px;">🏸 Coach: ${s.coach}</div>
             </div>
             <div class="session-price">
@@ -2265,6 +2227,31 @@
       const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
       return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
     } catch (e) { return dayName; }
+  }
+
+  // Format time range: "7:00 PM - 9:00 PM" from start time and duration
+  function formatTimeRange(startTime, durationMinutes) {
+    if (!startTime || !durationMinutes) return startTime;
+    try {
+      // Parse start time
+      const time24 = convertTo24(startTime);
+      const [h, m] = time24.split(':').map(Number);
+      if (isNaN(h) || isNaN(m)) return startTime;
+      
+      // Calculate end time
+      const totalMinutes = h * 60 + m + durationMinutes;
+      const endHour = Math.floor(totalMinutes / 60) % 24;
+      const endMin = totalMinutes % 60;
+      
+      // Convert back to 12-hour format
+      const endPeriod = endHour >= 12 ? 'PM' : 'AM';
+      const endHour12 = endHour === 0 ? 12 : (endHour > 12 ? endHour - 12 : endHour);
+      const endTimeStr = `${endHour12}:${String(endMin).padStart(2, '0')} ${endPeriod}`;
+      
+      return `${startTime} - ${endTimeStr}`;
+    } catch (e) {
+      return startTime;
+    }
   }
 
   function hoursUntil(isoStr) {
@@ -3262,6 +3249,10 @@
     document.getElementById("appUserAvatar").textContent = u.name.charAt(0).toUpperCase();
     document.getElementById("userGreeting").textContent = `Hi ${u.name.split(" ")[0]} 👋`;
     renderAppUserSessions();
+    
+    // Update pending payment badge immediately
+    updatePendingBadge();
+    
     // If user came from a session card click, open booking modal right away
     if (platform.pendingBookId) {
       const pid = platform.pendingBookId;
@@ -3402,7 +3393,7 @@
           <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
             <div>
               <div style="font-family:var(--font-display); font-size:15px; font-weight:700;">${s.venue}</div>
-              <div style="font-size:12px; color:var(--text-muted);">${formatSessionDate(s.startsAt, s.date)} · ${s.time} · ${s.court}</div>
+              <div style="font-size:12px; color:var(--text-muted);">${formatSessionDate(s.startsAt, s.date)} · ${formatTimeRange(s.time, s.duration || 60)} · ${s.court}</div>
             </div>
             <div>
               <div style="font-family:var(--font-display); font-size:20px; font-weight:800;">$${s.price}</div>
@@ -3494,7 +3485,7 @@
         const displayPrice = myBooking ? (myBooking.amountPaid || s.price) : s.price;
         
         // Session type badge
-        const sessionTypeIcons = { 'social': '🤝', 'group': '👥', 'private': '👤' };
+        const sessionTypeIcons = { 'social': '🤝', 'competitive': '⚡', 'learning': '📚' };
         const sessionType = s.sessionType || 'group';
         const sessionTypeIcon = sessionTypeIcons[sessionType] || '👥';
         const sessionTypeLabel = sessionType.charAt(0).toUpperCase() + sessionType.slice(1);
@@ -3504,7 +3495,7 @@
           <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
             <div>
               <div style="font-family:var(--font-display); font-size:15px; font-weight:700;">${s.venue}</div>
-              <div style="font-size:12px; color:var(--text-muted);">${formatSessionDate(s.startsAt, s.date)} · ${s.time} · ${s.court}</div>
+              <div style="font-size:12px; color:var(--text-muted);">${formatSessionDate(s.startsAt, s.date)} · ${formatTimeRange(s.time, s.duration || 60)} · ${s.court}</div>
               <div style="margin-top:4px;">
                 <span style="display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:2px 8px; font-size:11px; font-weight:600; color:var(--text-mid);">${sessionTypeIcon} ${sessionTypeLabel}</span>
               </div>
@@ -4005,7 +3996,7 @@
           const isPaid = b.booking.status === "paid";
           
           // Session type badge
-          const sessionTypeIcons = { 'social': '🤝', 'group': '👥', 'private': '👤' };
+          const sessionTypeIcons = { 'social': '🤝', 'competitive': '⚡', 'learning': '📚' };
           const sessionType = b.session.sessionType || 'group';
           const sessionTypeIcon = sessionTypeIcons[sessionType] || '👥';
           
@@ -4196,6 +4187,7 @@
     nextSat.setDate(today.getDate() + daysToSat);
     document.getElementById("sf_specificDate").value = nextSat.toISOString().split("T")[0];
     document.getElementById("sf_time").value = "";
+    document.getElementById("sf_duration").value = "60"; // Default to 1 hour
     document.getElementById("sf_level").value = "Beginner";
     document.getElementById("sf_age").value = "18+";
     document.getElementById("sf_price").value = "45";
@@ -4970,8 +4962,8 @@
       <div class="filter-pills" style="margin-bottom:20px;">
         <button class="app-pill active" onclick="appUserFilter('All', this)">All</button>
         <button class="app-pill" onclick="appUserFilter('social', this)">🤝 Social</button>
-        <button class="app-pill" onclick="appUserFilter('group', this)">👥 Group</button>
-        <button class="app-pill" onclick="appUserFilter('private', this)">👤 Private</button>
+        <button class="app-pill" onclick="appUserFilter('competitive', this)">⚡ Competitive</button>
+        <button class="app-pill" onclick="appUserFilter('learning', this)">📚 Learning</button>
         <button class="app-pill" onclick="appUserFilter('Monday', this)">Mon</button>
         <button class="app-pill" onclick="appUserFilter('Tuesday', this)">Tue</button>
         <button class="app-pill" onclick="appUserFilter('Wednesday', this)">Wed</button>
@@ -5122,8 +5114,8 @@
         <label class="auth-label">Session type</label>
         <select class="auth-input" id="sf_type" onchange="onSessionTypeChange()">
           <option value="social">🤝 Social play</option>
-          <option value="group">👥 Group coaching</option>
-          <option value="private">👤 Private coaching</option>
+          <option value="competitive">⚡ Competitive training</option>
+          <option value="learning">📚 Adult learning sessions</option>
         </select>
       </div>
       <div>
@@ -5257,8 +5249,8 @@
         <label class="auth-label">Session type</label>
         <select class="auth-input" id="rec_type">
           <option value="social">🤝 Social play</option>
-          <option value="group">👥 Group coaching</option>
-          <option value="private">👤 Private coaching</option>
+          <option value="competitive">⚡ Competitive training</option>
+          <option value="learning">📚 Adult learning sessions</option>
         </select>
       </div>
       <div>
