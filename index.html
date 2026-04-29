@@ -4705,7 +4705,7 @@
 
   async function bulkDeleteSessions() {
     const checkboxes = document.querySelectorAll('.session-checkbox:checked');
-    const sessionIds = Array.from(checkboxes).map(cb => cb.dataset.sessionId);
+    const sessionIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.sessionId));
     
     if (sessionIds.length === 0) return;
     
@@ -5035,8 +5035,8 @@
       <div class="filter-pills" style="margin-bottom:20px;">
         <button class="app-pill active" onclick="appUserFilter('All', this)">All</button>
         <button class="app-pill" onclick="appUserFilter('social', this)">🤝 Social</button>
-        <button class="app-pill" onclick="appUserFilter('competitive', this)">⚡ Competitive</button>
-        <button class="app-pill" onclick="appUserFilter('learning', this)">📚 Learning</button>
+        <button class="app-pill" onclick="appUserFilter('group', this)">👥 Group</button>
+        <button class="app-pill" onclick="appUserFilter('private', this)">👤 Private</button>
         <button class="app-pill" onclick="appUserFilter('Monday', this)">Mon</button>
         <button class="app-pill" onclick="appUserFilter('Tuesday', this)">Tue</button>
         <button class="app-pill" onclick="appUserFilter('Wednesday', this)">Wed</button>
