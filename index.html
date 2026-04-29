@@ -101,6 +101,108 @@
 
   .nav-cta:hover { background: var(--green-dark) !important; color: var(--white) !important; }
 
+  /* Mobile Menu */
+  .mobile-menu-btn {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    z-index: 1001;
+  }
+  
+  .mobile-menu-btn span {
+    width: 24px;
+    height: 2px;
+    background: var(--black);
+    transition: all 0.3s;
+    border-radius: 2px;
+  }
+  
+  .mobile-menu {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 80%;
+    max-width: 300px;
+    height: 100vh;
+    background: white;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.1);
+    z-index: 1000;
+    transition: right 0.3s ease;
+    overflow-y: auto;
+  }
+  
+  .mobile-menu.active {
+    right: 0;
+  }
+  
+  .mobile-menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .mobile-menu-close {
+    background: none;
+    border: none;
+    font-size: 32px;
+    cursor: pointer;
+    color: var(--text-mid);
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  
+  .mobile-menu-links {
+    list-style: none;
+    padding: 20px 0;
+    margin: 0;
+  }
+  
+  .mobile-menu-links li {
+    margin: 0;
+  }
+  
+  .mobile-menu-links a {
+    display: block;
+    padding: 16px 20px;
+    color: var(--text-mid);
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border-left: 3px solid transparent;
+  }
+  
+  .mobile-menu-links a:hover {
+    color: var(--black);
+    background: var(--surface);
+    border-left-color: var(--green);
+  }
+  
+  .mobile-menu-cta {
+    background: var(--black) !important;
+    color: white !important;
+    border-radius: 10px !important;
+    margin: 8px 20px !important;
+    text-align: center;
+    border-left: none !important;
+  }
+  
+  .mobile-menu-cta:hover {
+    background: var(--green) !important;
+  }
+
+
   /* HERO */
   .hero {
     min-height: 100vh;
@@ -1115,10 +1217,9 @@
   .phone-frame { animation: float 5s ease-in-out infinite; }
 
   @media (max-width: 900px) {
+    .mobile-menu-btn { display: flex; }
+    .nav-links { display: none; }
     nav { padding: 14px 18px; }
-    .nav-links { gap: 8px; }
-    .nav-links a { font-size: 11px; padding: 6px 8px; }
-    .nav-cta { padding: 8px 12px !important; font-size: 11px !important; white-space: nowrap; }
     .hero { padding: 100px 22px 60px; }
     .hero-grid { grid-template-columns: 1fr; gap: 60px; }
     .hero-visual { display: none; }
@@ -1144,9 +1245,6 @@
   @media (max-width: 480px) {
     nav { padding: 10px 12px; }
     .nav-logo { font-size: 16px; }
-    .nav-links { gap: 4px; }
-    .nav-links a { font-size: 10px; padding: 5px 6px; }
-    .nav-cta { padding: 6px 10px !important; font-size: 10px !important; white-space: nowrap; }
     .hero h1 { font-size: 36px !important; line-height: 1.05; }
     .hero-sub { font-size: 15px; }
     .section-title { font-size: 26px !important; }
@@ -1598,6 +1696,15 @@
 <!-- NAV -->
 <nav>
   <a class="nav-logo" href="#">Get Court<span>Up</span></a>
+  
+  <!-- Mobile hamburger -->
+  <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+  
+  <!-- Desktop nav links -->
   <ul class="nav-links">
     <li><a href="#sessions">Sessions</a></li>
     <li><a href="#coach">Coaches</a></li>
@@ -1607,6 +1714,22 @@
     <li><a onclick="openAuth('book')" class="nav-cta">Book a session →</a></li>
   </ul>
 </nav>
+
+<!-- Mobile Menu Overlay -->
+<div class="mobile-menu" id="mobileMenu">
+  <div class="mobile-menu-header">
+    <a class="nav-logo" href="#" onclick="toggleMobileMenu()">Get Court<span>Up</span></a>
+    <button class="mobile-menu-close" onclick="toggleMobileMenu()" aria-label="Close">&times;</button>
+  </div>
+  <ul class="mobile-menu-links">
+    <li><a href="#sessions" onclick="toggleMobileMenu()">Sessions</a></li>
+    <li><a href="#coach" onclick="toggleMobileMenu()">Coaches</a></li>
+    <li><a href="#venues" onclick="toggleMobileMenu()">Venues</a></li>
+    <li><a href="#how" onclick="toggleMobileMenu()">How it works</a></li>
+    <li><a onclick="toggleMobileMenu(); openAuth('login');" style="cursor:pointer;">Log in</a></li>
+    <li><a onclick="toggleMobileMenu(); openAuth('book');" class="mobile-menu-cta">Book a session →</a></li>
+  </ul>
+</div>
 
 <!-- HERO -->
 <section class="hero" id="home">
@@ -1917,6 +2040,12 @@
 <div class="toast" id="toast">✓ Spot booked! See you on the court 🏸</div>
 
 <script>
+  // Mobile menu toggle
+  function toggleMobileMenu() {
+    const menu = document.getElementById('mobileMenu');
+    menu.classList.toggle('active');
+  }
+
   // Landing page session list — pulls from platform.platformSessions (live Supabase data).
   // platform may not be defined yet at first render; we re-render after loadAllData.
   const booked = new Set();
