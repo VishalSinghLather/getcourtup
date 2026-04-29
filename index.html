@@ -1930,8 +1930,8 @@
 
   function typeBadge(type) {
     if (type === 'social') return '<span class="badge" style="background:#FFF8E1;color:#B45309;border-color:#F59E0B;">🤝 Social play</span>';
-    if (type === 'competitive') return '<span class="badge" style="background:#FEE2E2;color:#991B1B;border-color:#EF4444;">⚡ Competitive training</span>';
-    if (type === 'learning') return '<span class="badge" style="background:#E8FFF6;color:#00A878;border-color:#00C896;">📚 Adult learning sessions</span>';
+    if (type === 'private') return '<span class="badge" style="background:#1F2937;color:white;border-color:#1F2937;">👤 Private coaching</span>';
+    if (type === 'group') return '<span class="badge" style="background:#E8FFF6;color:#00A878;border-color:#00C896;">👥 Group coaching</span>';
     return '';
   }
 
@@ -5115,8 +5115,8 @@
         <label class="auth-label">Session type</label>
         <select class="auth-input" id="sf_type" onchange="onSessionTypeChange()">
           <option value="social">🤝 Social play</option>
-          <option value="competitive">⚡ Competitive training</option>
-          <option value="learning">📚 Adult learning sessions</option>
+          <option value="group">👥 Group coaching</option>
+          <option value="private">👤 Private coaching</option>
         </select>
       </div>
       <div>
@@ -5250,8 +5250,8 @@
         <label class="auth-label">Session type</label>
         <select class="auth-input" id="rec_type">
           <option value="social">🤝 Social play</option>
-          <option value="competitive">⚡ Competitive training</option>
-          <option value="learning">📚 Adult learning sessions</option>
+          <option value="group">👥 Group coaching</option>
+          <option value="private">👤 Private coaching</option>
         </select>
       </div>
       <div>
