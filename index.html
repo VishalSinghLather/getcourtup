@@ -96,6 +96,7 @@
     border-radius: 100px !important;
     font-weight: 600 !important;
     transition: background 0.2s !important;
+    white-space: nowrap !important;
   }
 
   .nav-cta:hover { background: var(--green-dark) !important; color: var(--white) !important; }
@@ -1115,10 +1116,9 @@
 
   @media (max-width: 900px) {
     nav { padding: 14px 18px; }
-    .nav-links { gap: 14px; }
-    .nav-links li:nth-child(1), .nav-links li:nth-child(2), .nav-links li:nth-child(3), .nav-links li:nth-child(4) { display: none; }
-    .nav-links a { font-size: 13px; }
-    .nav-cta { padding: 9px 16px !important; font-size: 13px !important; }
+    .nav-links { gap: 8px; }
+    .nav-links a { font-size: 11px; padding: 6px 8px; }
+    .nav-cta { padding: 8px 12px !important; font-size: 11px !important; white-space: nowrap; }
     .hero { padding: 100px 22px 60px; }
     .hero-grid { grid-template-columns: 1fr; gap: 60px; }
     .hero-visual { display: none; }
@@ -1142,9 +1142,11 @@
     .hero-actions .btn-primary, .hero-actions .btn-ghost { justify-content: center; width: 100%; }
   }
   @media (max-width: 480px) {
-    nav { padding: 12px 14px; }
-    .nav-logo { font-size: 18px; }
-    .nav-links { gap: 8px; }
+    nav { padding: 10px 12px; }
+    .nav-logo { font-size: 16px; }
+    .nav-links { gap: 4px; }
+    .nav-links a { font-size: 10px; padding: 5px 6px; }
+    .nav-cta { padding: 6px 10px !important; font-size: 10px !important; white-space: nowrap; }
     .hero h1 { font-size: 36px !important; line-height: 1.05; }
     .hero-sub { font-size: 15px; }
     .section-title { font-size: 26px !important; }
