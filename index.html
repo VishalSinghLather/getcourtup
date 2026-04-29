@@ -3949,7 +3949,9 @@
         amount: finalPrice,
         quantity: qty,
         discount: Math.round(discount * 100),
-        reference: buildRef(s, platform.currentUser, qty)
+        reference: buildRef(s, platform.currentUser, qty),
+        payIdPhone: platform.payId.phone,
+        payIdName: platform.payId.name
       });
 
       closeBookModal();
@@ -4241,6 +4243,8 @@
     const s = platform.platformSessions.find(x => x.id === sid);
     if (!s) return;
     const b = (s.bookings || []).find(x => x.userId === uid && x.status === "awaiting_payment");
+    const user = platform.users.find(u => u.id === uid);
+    
     if (b && b.dbId) {
       const { error } = await sb.from('bookings').update({
         status: 'paid',
@@ -4249,6 +4253,24 @@
       if (error) { showAppToast("Error updating"); console.error(error); return; }
       b.status = "paid";
       b.paidAt = new Date().toISOString();
+      
+      // Send payment confirmation email to customer
+      if (user) {
+        const sessionInfo = b.quantity > 1 
+          ? `${b.quantity}-session package starting ${formatSessionDate(s.startsAt, s.date)}`
+          : `${formatSessionDate(s.startsAt, s.date)} ${s.time} · ${s.court}`;
+        
+        sendNotification({
+          type: "payment_confirmed",
+          playerName: user.name,
+          playerEmail: user.email,
+          playerPhone: user.phone,
+          sessionInfo: sessionInfo,
+          amount: b.amountPaid,
+          quantity: b.quantity || 1
+        });
+      }
+      
       showAppToast("✓ Payment marked as received");
       renderManagerBookings();
       renderManagerStats();
