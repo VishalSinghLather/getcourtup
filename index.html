@@ -3938,15 +3938,34 @@
       list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div>No sessions yet. Add your first one!</div>';
       return;
     }
-    list.innerHTML = `
+    
+    // Add bulk delete controls
+    const bulkControls = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding:12px; background:var(--surface); border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <input type="checkbox" id="selectAllSessions" onchange="toggleSelectAllSessions()" style="width:18px; height:18px; cursor:pointer;">
+          <label for="selectAllSessions" style="font-size:13px; font-weight:600; cursor:pointer;">Select all</label>
+          <span id="selectedCount" style="font-size:12px; color:var(--text-muted);"></span>
+        </div>
+        <button id="bulkDeleteBtn" class="btn-small danger" onclick="bulkDeleteSessions()" style="display:none;">Delete selected</button>
+      </div>`;
+    
+    list.innerHTML = bulkControls + `
       <table class="data-table">
-        <thead><tr><th>Session</th><th>Day & Time</th><th>Level</th><th>Price</th><th>Bookings</th><th style="text-align:right;">Actions</th></tr></thead>
+        <thead><tr><th style="width:40px;"></th><th>Session</th><th>Type</th><th>Day & Time</th><th>Level</th><th>Price</th><th>Bookings</th><th style="text-align:right;">Actions</th></tr></thead>
         <tbody>
         ${platform.platformSessions.map(s => {
           const booked = s.bookedUserIds.length;
+          const sessionType = s.sessionType || 'group';
+          const typeIcons = { 'social': '🤝', 'group': '👥', 'private': '👤' };
+          const typeLabels = { 'social': 'Social', 'group': 'Group', 'private': 'Private' };
+          const timeRange = formatTimeRange(s.time, s.duration || 60);
+          
           return `<tr>
+            <td><input type="checkbox" class="session-checkbox" data-session-id="${s.id}" onchange="updateBulkDeleteButton()" style="width:18px; height:18px; cursor:pointer;"></td>
             <td><div style="font-weight:600;">${s.venue}</div><div style="font-size:11px; color:var(--text-muted);">${s.court} · Ages ${s.ageRange}</div></td>
-            <td>${formatSessionDate(s.startsAt, s.date)}<br><span style="font-size:11px; color:var(--text-muted);">${s.time}</span></td>
+            <td><span style="font-size:12px;">${typeIcons[sessionType]} ${typeLabels[sessionType]}</span></td>
+            <td>${formatSessionDate(s.startsAt, s.date)}<br><span style="font-size:11px; color:var(--text-muted);">${timeRange}</span></td>
             <td><span class="badge badge-beg">${s.level}</span></td>
             <td style="font-weight:600;">$${s.price}</td>
             <td>
@@ -4652,6 +4671,59 @@
     if (error) { showAppToast("Error deleting"); return; }
     platform.platformSessions = platform.platformSessions.filter(s => s.id !== id);
     showAppToast("Session deleted");
+    renderManagerSessions();
+    renderManagerStats();
+  }
+
+  function toggleSelectAllSessions() {
+    const selectAll = document.getElementById('selectAllSessions');
+    const checkboxes = document.querySelectorAll('.session-checkbox');
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    updateBulkDeleteButton();
+  }
+
+  function updateBulkDeleteButton() {
+    const checkboxes = document.querySelectorAll('.session-checkbox:checked');
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    const selectedCount = document.getElementById('selectedCount');
+    const selectAllCheckbox = document.getElementById('selectAllSessions');
+    
+    if (checkboxes.length > 0) {
+      bulkDeleteBtn.style.display = 'block';
+      selectedCount.textContent = `${checkboxes.length} selected`;
+    } else {
+      bulkDeleteBtn.style.display = 'none';
+      selectedCount.textContent = '';
+    }
+    
+    // Update "select all" checkbox state
+    const allCheckboxes = document.querySelectorAll('.session-checkbox');
+    if (selectAllCheckbox) {
+      selectAllCheckbox.checked = allCheckboxes.length > 0 && checkboxes.length === allCheckboxes.length;
+    }
+  }
+
+  async function bulkDeleteSessions() {
+    const checkboxes = document.querySelectorAll('.session-checkbox:checked');
+    const sessionIds = Array.from(checkboxes).map(cb => cb.dataset.sessionId);
+    
+    if (sessionIds.length === 0) return;
+    
+    if (!confirm(`Delete ${sessionIds.length} session${sessionIds.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
+    
+    // Delete all selected sessions
+    const { error } = await sb.from('sessions').delete().in('id', sessionIds);
+    
+    if (error) {
+      showAppToast('Error deleting sessions: ' + error.message);
+      console.error(error);
+      return;
+    }
+    
+    // Update local state
+    platform.platformSessions = platform.platformSessions.filter(s => !sessionIds.includes(s.id));
+    
+    showAppToast(`✓ ${sessionIds.length} session${sessionIds.length > 1 ? 's' : ''} deleted`);
     renderManagerSessions();
     renderManagerStats();
   }
