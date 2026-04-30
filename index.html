@@ -2933,139 +2933,19 @@
 
   // ============ VIDEO EDITOR ============
   // Extract YouTube video ID from any YouTube URL format
-  function extractYouTubeId(url) {
-    if (!url) return null;
-    url = url.trim();
-    // Already just an ID (no slashes or dots)
-    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
-    // youtu.be/ID
-    let m = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
-    if (m) return m[1];
-    // youtube.com/shorts/ID
-    m = url.match(/shorts\/([a-zA-Z0-9_-]{11})/);
-    if (m) return m[1];
-    // youtube.com/watch?v=ID
-    m = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-    if (m) return m[1];
-    // youtube.com/embed/ID
-    m = url.match(/embed\/([a-zA-Z0-9_-]{11})/);
-    if (m) return m[1];
-    return null;
-  }
-
   function openVideoEditor() {
-    // Load current video ID
-    const vids = platform.coachProfile.videos || ['gAyK1spQUi0'];
-    const videoInput = document.getElementById('vid1');
-    if (videoInput) videoInput.value = vids[0] ? `https://youtube.com/shorts/${vids[0]}` : '';
-    document.getElementById('vid1Preview').style.display = 'none';
-    document.getElementById('videoEditorSuccess').style.display = 'none';
+    // Just open the modal with upload instructions
     document.getElementById('videoEditorModal').classList.add('open');
-
-    // Add live preview on input change
-    if (videoInput) {
-      videoInput.oninput = () => {
-        const ytId = extractYouTubeId(videoInput.value);
-        const preview = document.getElementById('vid1Preview');
-        const frame = document.getElementById('vid1Frame');
-        if (ytId) {
-          frame.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&loop=1&playlist=${ytId}`;
-          preview.style.display = 'block';
-        } else {
-          preview.style.display = 'none';
-          frame.src = '';
-        }
-      };
-    }
   }
 
   function closeVideoEditor() {
     document.getElementById('videoEditorModal').classList.remove('open');
-    // Stop playing preview
-    const frame = document.getElementById('vid1Frame');
-    if (frame) frame.src = '';
   }
 
-  async function saveVideos() {
-    const val = document.getElementById('vid1').value.trim();
-    const videoId = extractYouTubeId(val);
-    
-    if (!videoId) {
-      showAppToast("Please enter a valid YouTube link");
-      return;
-    }
-    
-    const ids = [videoId];
+  // Video functions removed - video is now uploaded via GitHub
+  // Video file location: /public/videos/coach-demo.mp4
 
-    // Update in-memory state
-    if (!platform.coachProfile) platform.coachProfile = {};
-    platform.coachProfile.videos = ids;
-
-    // Save to Supabase settings
-    try {
-      const existing = platform.coachProfile;
-      await sb.from('settings').upsert({
-        key: 'coach_profile',
-        value: JSON.stringify({
-          name: existing.name || 'Vishal Singh Lather',
-          bio: existing.bio || '',
-          videos: ids
-        })
-      }, { onConflict: 'key' });
-    } catch (e) {
-      console.warn("Could not save to settings:", e);
-    }
-
-    // Update the public page videos immediately
-    updateCoachVideos(ids);
-
-    document.getElementById('videoEditorSuccess').style.display = 'block';
-    setTimeout(() => {
-      closeVideoEditor();
-      document.getElementById('videoEditorSuccess').style.display = 'none';
-    }, 1500);
-    showAppToast("✓ Videos updated!");
-  }
-
-  function updateCoachVideos(ids) {
-    if (!ids || ids.length === 0) return;
-    // Update main video frame
-    const frame = document.getElementById('coachVideoFrame');
-    if (frame) frame.src = `https://www.youtube-nocookie.com/embed/${ids[0]}`;
-    // Update thumbnails
-    const thumbContainer = document.querySelector('#coach .thumb-row');
-    if (thumbContainer) {
-      const btns = thumbContainer.querySelectorAll('button');
-      btns.forEach((btn, i) => {
-        if (ids[i]) {
-          btn.style.display = 'flex';
-          btn.setAttribute('onclick', `switchCoachVideo('${ids[i]}', this)`);
-          const img = btn.querySelector('img');
-          if (img) img.src = `https://img.youtube.com/vi/${ids[i]}/mqdefault.jpg`;
-          btn.style.border = i === 0 ? '2.5px solid var(--green)' : '2px solid var(--border)';
-        } else {
-          btn.style.display = 'none';
-        }
-      });
-    }
-  }
-
-  // ============ COACH VIDEO SWITCHER ============
-  function switchCoachVideo(videoId, btn) {
-    // Update iframe src
-    const frame = document.getElementById("coachVideoFrame");
-    if (frame) frame.src = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&autoplay=1&loop=1&playlist=${videoId}`;
-    // Update button borders
-    const thumbs = btn.parentElement.querySelectorAll("button");
-    thumbs.forEach(b => {
-      b.style.border = "2px solid var(--border)";
-      b.querySelector("img").style.opacity = "0.7";
-    });
-    btn.style.border = "2.5px solid var(--green)";
-    btn.querySelector("img").style.opacity = "0.85";
-  }
-
-  // ============ WAITLIST ============
+  // ============ COACH PROFILE EDITOR ============
   let currentWaitlistLevel = '';
 
   function openWaitlist(level) {
