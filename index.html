@@ -2047,7 +2047,7 @@
             playsinline
             preload="metadata"
             poster="">
-            <source src="/videos/coach-demo.mp4" type="video/mp4" id="coachVideoSource">
+            <source src="" type="video/mp4" id="coachVideoSource">
             Your browser does not support the video tag.
           </video>
           
@@ -2937,13 +2937,106 @@
 
   function closeVideoEditor() {
     document.getElementById('videoEditorModal').classList.remove('open');
+    // Reset form
+    document.getElementById('coachVideoInput').value = '';
+    document.getElementById('videoFileName').textContent = '';
+    document.getElementById('newVideoPreview').style.display = 'none';
+    document.getElementById('uploadVideoBtn').disabled = true;
   }
 
-  // Video functions removed - video is now uploaded via GitHub
-  // Video file location: /public/videos/coach-demo.mp4
+  // ============ VIDEO UPLOAD ============
+  let selectedVideoFile = null;
 
-  // ============ COACH PROFILE EDITOR ============
-  let currentWaitlistLevel = '';
+  function previewCoachVideo(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.type.startsWith('video/')) {
+      showAppToast('Please select a video file');
+      return;
+    }
+
+    // Check file size (100MB max)
+    if (file.size > 100 * 1024 * 1024) {
+      showAppToast('Video must be under 100MB');
+      return;
+    }
+
+    selectedVideoFile = file;
+    document.getElementById('videoFileName').textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(2) + ' MB)';
+    
+    // Preview video
+    const preview = document.getElementById('newVideoPlayer');
+    const previewContainer = document.getElementById('newVideoPreview');
+    preview.src = URL.createObjectURL(file);
+    previewContainer.style.display = 'block';
+    
+    // Enable upload button
+    document.getElementById('uploadVideoBtn').disabled = false;
+  }
+
+  async function uploadCoachVideo() {
+    if (!selectedVideoFile) {
+      showAppToast('Please select a video file');
+      return;
+    }
+
+    const uploadBtn = document.getElementById('uploadVideoBtn');
+    const progressDiv = document.getElementById('videoUploadProgress');
+    const progressBar = document.getElementById('videoProgressBar');
+    const progressText = document.getElementById('videoProgressText');
+    const successDiv = document.getElementById('videoUploadSuccess');
+
+    uploadBtn.disabled = true;
+    progressDiv.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressText.textContent = 'Uploading...';
+
+    try {
+      // Upload to Supabase Storage
+      const fileName = `coach-demo-${Date.now()}.mp4`;
+      const { data, error } = await sb.storage
+        .from('videos')
+        .upload(fileName, selectedVideoFile, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: { publicUrl } } = sb.storage
+        .from('videos')
+        .getPublicUrl(fileName);
+
+      console.log('Video uploaded:', publicUrl);
+
+      // Update progress
+      progressBar.style.width = '100%';
+      progressText.textContent = 'Upload complete!';
+
+      // Show success
+      setTimeout(() => {
+        progressDiv.style.display = 'none';
+        successDiv.style.display = 'block';
+        showAppToast('✓ Video uploaded successfully!');
+        
+        // Reload page after 2 seconds to show new video
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      }, 500);
+
+    } catch (error) {
+      console.error('Video upload error:', error);
+      showAppToast('Failed to upload video: ' + error.message);
+      uploadBtn.disabled = false;
+      progressDiv.style.display = 'none';
+    }
+  }
+
+  // ============ WAITLIST ============
 
   function openWaitlist(level) {
     currentWaitlistLevel = level;
@@ -5542,7 +5635,36 @@ document.addEventListener('DOMContentLoaded', function() {
   const placeholder = document.getElementById('videoPlaceholder');
   
   if (videoPlayer && videoSource && placeholder) {
-    console.log('Video player initialized, checking source:', videoSource.src);
+    // Load latest video from Supabase Storage
+    async function loadLatestVideo() {
+      try {
+        const { data, error } = await sb.storage.from('videos').list('', {
+          limit: 10,
+          offset: 0,
+          sortBy: { column: 'created_at', order: 'desc' }
+        });
+        
+        if (error) throw error;
+        
+        // Find the latest coach demo video
+        const videoFile = data.find(f => f.name.startsWith('coach-demo'));
+        
+        if (videoFile) {
+          const { data: { publicUrl } } = sb.storage.from('videos').getPublicUrl(videoFile.name);
+          videoSource.src = publicUrl;
+          console.log('Loading video from Supabase:', publicUrl);
+          videoPlayer.load();
+        } else {
+          console.log('No video found in Supabase Storage');
+          placeholder.style.display = 'flex';
+        }
+      } catch (e) {
+        console.error('Failed to load video from Supabase:', e);
+        placeholder.style.display = 'flex';
+      }
+    }
+    
+    loadLatestVideo();
     
     videoPlayer.addEventListener('loadeddata', function() {
       // Video loaded successfully, hide placeholder
@@ -5562,9 +5684,6 @@ document.addEventListener('DOMContentLoaded', function() {
       console.error('Video source error:', e);
       placeholder.style.display = 'flex';
     });
-    
-    // Initial check - try to load
-    videoPlayer.load();
     
     // If video loads within 10 seconds, hide placeholder
     setTimeout(function() {
@@ -5591,36 +5710,64 @@ document.addEventListener('DOMContentLoaded', function() {
     <h3 class="auth-title">Upload coach video</h3>
     <p class="auth-sub-small">Upload your demo video to show on the public coach profile.</p>
 
-    <div style="margin-top:20px; padding:24px; background:#F8F9FA; border-radius:12px; border:2px dashed #DDD;">
-      <div style="text-align:center; margin-bottom:16px;">
-        <div style="font-size:48px; margin-bottom:8px;">🎬</div>
-        <div style="font-size:15px; font-weight:600; margin-bottom:4px;">How to add your video</div>
-        <div style="font-size:13px; color:#666; line-height:1.6;">
-          1. Export your video file (MP4 format recommended)<br>
-          2. Upload to your Cloudflare Pages deployment:<br>
-          <code style="background:white; padding:2px 8px; border-radius:4px; font-size:12px;">/public/videos/coach-demo.mp4</code><br>
-          3. Video will automatically appear on your site
+    <div style="margin-top:20px;">
+      <!-- Current video preview -->
+      <div id="currentVideoPreview" style="margin-bottom:20px; display:none;">
+        <label class="auth-label">Current video</label>
+        <div style="border-radius:12px; overflow:hidden; aspect-ratio:9/16; max-height:300px; background:#000;">
+          <video id="currentVideoPlayer" controls style="width:100%; height:100%; object-fit:cover;"></video>
         </div>
       </div>
-      
-      <div style="background:white; padding:16px; border-radius:8px; margin-top:16px;">
-        <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:#333;">📝 Upload via GitHub:</div>
+
+      <!-- Upload new video -->
+      <label class="auth-label">Upload new video</label>
+      <div style="margin-bottom:16px;">
+        <label for="coachVideoInput" class="btn-small ghost" style="display:inline-block; cursor:pointer;">
+          🎬 Choose video file
+        </label>
+        <input type="file" id="coachVideoInput" accept="video/mp4,video/webm" style="display:none;" onchange="previewCoachVideo(this)">
+        <div id="videoFileName" style="font-size:12px; color:var(--text-muted); margin-top:6px;"></div>
+      </div>
+
+      <!-- Upload progress -->
+      <div id="videoUploadProgress" style="display:none; margin-bottom:16px;">
+        <div style="background:#E5E7EB; border-radius:8px; height:8px; overflow:hidden;">
+          <div id="videoProgressBar" style="background:var(--green); height:100%; width:0%; transition:width 0.3s;"></div>
+        </div>
+        <div id="videoProgressText" style="font-size:12px; color:var(--text-muted); margin-top:6px; text-align:center;">Uploading...</div>
+      </div>
+
+      <!-- Preview new video -->
+      <div id="newVideoPreview" style="display:none; margin-bottom:16px;">
+        <label class="auth-label">Preview</label>
+        <div style="border-radius:12px; overflow:hidden; aspect-ratio:9/16; max-height:300px; background:#000;">
+          <video id="newVideoPlayer" controls style="width:100%; height:100%; object-fit:cover;"></video>
+        </div>
+      </div>
+
+      <!-- Tips -->
+      <div style="background:#F8F9FA; padding:12px; border-radius:8px; margin-bottom:16px;">
         <div style="font-size:12px; color:#666; line-height:1.6;">
-          1. Go to your GitHub repo<br>
-          2. Create folder: <code style="background:#f5f5f5; padding:2px 6px; border-radius:3px;">public/videos/</code><br>
-          3. Upload file as: <code style="background:#f5f5f5; padding:2px 6px; border-radius:3px;">coach-demo.mp4</code><br>
-          4. Cloudflare will auto-deploy in ~1 minute
+          <strong>💡 Tips:</strong><br>
+          • Recommended: MP4 format, H.264 codec<br>
+          • Max size: 100MB<br>
+          • Vertical (9:16) format works best for mobile<br>
+          • Video will be publicly accessible
         </div>
       </div>
-      
-      <div style="background:#FFF3EC; padding:12px; border-radius:8px; margin-top:12px; border-left:3px solid #FF6B35;">
-        <div style="font-size:12px; color:#666;">
-          <strong style="color:#CC4A10;">💡 Tip:</strong> Keep video under 50MB for fast loading. Vertical (9:16) format works best for mobile.
-        </div>
+
+      <!-- Success message -->
+      <div id="videoUploadSuccess" style="display:none; background:#E8FFF6; color:#00A878; padding:12px; border-radius:8px; font-size:13px; margin-bottom:16px; border:1px solid #00C896;">
+        ✓ Video uploaded successfully! Refreshing page...
       </div>
     </div>
 
-    <button class="btn-ghost" onclick="closeVideoEditor()" style="width:100%; margin-top:20px;">Close</button>
+    <div style="display:flex; gap:8px;">
+      <button class="btn-ghost" onclick="closeVideoEditor()" style="flex:1;">Cancel</button>
+      <button class="btn-primary black" onclick="uploadCoachVideo()" id="uploadVideoBtn" style="flex:1;" disabled>
+        Upload video
+      </button>
+    </div>
   </div>
 </div>
 
