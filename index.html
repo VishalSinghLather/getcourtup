@@ -2920,10 +2920,7 @@
         platform.coachProfile.name = profile.name || "Vishal Singh Lather";
         platform.coachProfile.bio = profile.bio || platform.coachProfile.bio;
         if (profile.photoUrl) platform.coachProfile.photoUrl = profile.photoUrl;
-        if (profile.videos && profile.videos.length > 0) {
-          platform.coachProfile.videos = profile.videos;
-          updateCoachVideos(profile.videos);
-        }
+        // Video is now static file at /videos/coach-demo.mp4, no need to update
         updateCoachSection();
       }
     } catch (e) {
@@ -5545,18 +5542,39 @@ document.addEventListener('DOMContentLoaded', function() {
   const placeholder = document.getElementById('videoPlaceholder');
   
   if (videoPlayer && videoSource && placeholder) {
+    console.log('Video player initialized, checking source:', videoSource.src);
+    
     videoPlayer.addEventListener('loadeddata', function() {
       // Video loaded successfully, hide placeholder
+      console.log('Video loaded successfully!');
       placeholder.style.display = 'none';
     });
     
-    videoPlayer.addEventListener('error', function() {
+    videoPlayer.addEventListener('error', function(e) {
       // Video failed to load, show placeholder
+      console.error('Video failed to load:', e);
+      console.error('Video error code:', videoPlayer.error ? videoPlayer.error.code : 'unknown');
+      console.error('Attempted to load:', videoSource.src);
       placeholder.style.display = 'flex';
     });
     
-    // Initial check
+    videoSource.addEventListener('error', function(e) {
+      console.error('Video source error:', e);
+      placeholder.style.display = 'flex';
+    });
+    
+    // Initial check - try to load
     videoPlayer.load();
+    
+    // If video loads within 3 seconds, hide placeholder
+    setTimeout(function() {
+      if (videoPlayer.readyState >= 2) { // HAVE_CURRENT_DATA or better
+        console.log('Video ready after timeout check');
+        placeholder.style.display = 'none';
+      } else {
+        console.log('Video not ready after 3s, keeping placeholder');
+      }
+    }, 3000);
   }
 });
 </script>
