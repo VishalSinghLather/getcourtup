@@ -5566,15 +5566,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial check - try to load
     videoPlayer.load();
     
-    // If video loads within 3 seconds, hide placeholder
+    // If video loads within 10 seconds, hide placeholder
     setTimeout(function() {
       if (videoPlayer.readyState >= 2) { // HAVE_CURRENT_DATA or better
         console.log('Video ready after timeout check');
         placeholder.style.display = 'none';
       } else {
-        console.log('Video not ready after 3s, keeping placeholder');
+        console.log('Video not ready after 10s, keeping placeholder');
+        console.log('Video readyState:', videoPlayer.readyState);
+        console.log('Video networkState:', videoPlayer.networkState);
       }
-    }, 3000);
+    }, 10000);
   }
 });
 </script>
