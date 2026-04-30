@@ -894,18 +894,19 @@
   .player-avatars { display: flex; align-items: center; }
 
   .av {
-    width: 30px;
-    height: 30px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     border: 2px solid var(--white);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
+    font-size: 9px;
     font-weight: 700;
     color: #fff;
-    margin-left: -8px;
+    margin-left: -10px;
     position: relative;
+    cursor: help;
   }
 
   .av:first-child { margin-left: 0; }
@@ -1743,6 +1744,50 @@
         <a href="#sessions" class="btn-primary green">Browse sessions →</a>
         <a href="#how" class="btn-ghost">How it works</a>
       </div>
+      
+      <div class="hero-groups" style="margin-top: 28px; max-width: 600px;">
+        <!-- Header: Available sessions -->
+        <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px;">🏸</span>
+          AVAILABLE SESSIONS
+        </div>
+        
+        <!-- Category chips -->
+        <div class="hero-groups-pills" style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <div class="hero-chip active" onclick="location.href='#sessions'" style="cursor: pointer; display: flex; align-items: center; gap: 8px; background: var(--green-light); border: 1.5px solid var(--green); border-radius: 100px; padding: 10px 16px; transition: all 0.2s;">
+            <span class="chip-icon" style="font-size: 20px;">🤝</span>
+            <div>
+              <div class="chip-title" style="font-size: 13px; font-weight: 700; color: var(--black);">Fun connect socials</div>
+              <div class="chip-sub" style="font-size: 11px; color: #666; margin-top: 2px;">Play & meet new players</div>
+            </div>
+          </div>
+          <div class="hero-chip active" onclick="location.href='#sessions'" style="cursor: pointer; display: flex; align-items: center; gap: 8px; background: var(--green-light); border: 1.5px solid var(--green); border-radius: 100px; padding: 10px 16px; transition: all 0.2s;">
+            <span class="chip-icon" style="font-size: 20px;">👥</span>
+            <div>
+              <div class="chip-title" style="font-size: 13px; font-weight: 700; color: var(--black);">Group classes adults</div>
+              <div class="chip-sub" style="font-size: 11px; color: #666; margin-top: 2px;">Learn together, improve faster</div>
+            </div>
+          </div>
+          <div class="hero-chip active" onclick="location.href='#sessions'" style="cursor: pointer; display: flex; align-items: center; gap: 8px; background: var(--green-light); border: 1.5px solid var(--green); border-radius: 100px; padding: 10px 16px; transition: all 0.2s;">
+            <span class="chip-icon" style="font-size: 20px;">⚡</span>
+            <div>
+              <div class="chip-title" style="font-size: 13px; font-weight: 700; color: var(--black);">Competitive learning</div>
+              <div class="chip-sub" style="font-size: 11px; color: #666; margin-top: 2px;">Take your game to the next level</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div style="background: linear-gradient(135deg, #FFF8E1 0%, #FFE8CC 100%); border-left: 4px solid #F59E0B; padding: 16px 20px; border-radius: 12px; margin-top: 24px; max-width: 500px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="font-size: 32px;">💰</div>
+          <div>
+            <div style="font-weight: 700; font-size: 15px; color: #1a1a1a; margin-bottom: 4px;">Bulk booking discounts</div>
+            <div style="font-size: 13px; color: #666;">Book 5 sessions: <strong style="color: #00A878;">5% off</strong> · Book 10 sessions: <strong style="color: #00A878;">10% off</strong></div>
+          </div>
+        </div>
+      </div>
+      
       <div class="hero-stats">
         <div class="stat-item">
           <span class="stat-num" id="heroStatVenues">1</span>
@@ -1996,12 +2041,22 @@
 
         <!-- Single video -->
         <div style="border-radius:16px; overflow:hidden; aspect-ratio:9/16; max-height:480px; background:#000; position:relative;" id="coachVideoContainer">
-          <iframe id="coachVideoFrame"
-            src="https://www.youtube.com/embed/gAyK1spQUi0?rel=0&modestbranding=1&loop=1&playlist=gAyK1spQUi0"
-            style="width:100%; height:100%; border:none;"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen>
-          </iframe>
+          <video id="coachVideoPlayer"
+            style="width:100%; height:100%; object-fit:cover;"
+            controls
+            playsinline
+            preload="metadata"
+            poster="">
+            <source src="/videos/coach-demo.mp4" type="video/mp4" id="coachVideoSource">
+            Your browser does not support the video tag.
+          </video>
+          
+          <!-- Upload instructions overlay (shows if no video uploaded) -->
+          <div id="videoPlaceholder" style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.8); color:white; text-align:center; padding:20px;">
+            <div style="font-size:48px; margin-bottom:16px;">🎬</div>
+            <div style="font-size:16px; font-weight:600; margin-bottom:8px;">No video uploaded yet</div>
+            <div style="font-size:13px; color:#999;">Upload a video in the Manager Dashboard</div>
+          </div>
         </div>
       </div>
 
@@ -2149,10 +2204,16 @@
       const confirmedToRun = numBooked >= minToRun;
       // Generate avatar circles from booked users
       const colors = ["#FF6B35","#5B8CFF","#00C896","#9B59B6","#E24B4A","#F5A623"];
+      const emojis = ["🏸","⚡","🔥","💪","🎯","✨","🌟","🚀"];
       const avatars = (s.bookedUserIds || []).slice(0, 5).map((uid, i) => {
         const u = usersList.find(x => x.id === uid);
-        const initial = u ? u.name.charAt(0).toUpperCase() : "?";
-        return `<div class="av" style="background:${colors[i % colors.length]}">${initial}</div>`;
+        if (!u) return `<div class="av" style="background:${colors[i % colors.length]}">?</div>`;
+        const nameParts = u.name.split(' ');
+        const initials = nameParts.length > 1 
+          ? (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase()
+          : u.name.substring(0, 2).toUpperCase();
+        const emoji = emojis[i % emojis.length];
+        return `<div class="av" style="background:${colors[i % colors.length]}" title="${u.name}">${emoji}${initials}</div>`;
       }).join("");
       const emptyAv = spotsLeft > 0 ? `<div class="av av-empty">+${spotsLeft}</div>` : "";
       return `
@@ -2165,7 +2226,7 @@
             </div>
             <div class="session-price">
               <div class="session-price-num">$${s.price}</div>
-              <div class="session-price-label">per person</div>
+              <div class="session-price-label">per hour</div>
             </div>
           </div>
           <div class="session-badges">
@@ -2177,24 +2238,12 @@
               : `<span class="badge" style="background:#FFF3EC;color:#CC4A10;border-color:#FF6B35;">Needs ${minToRun - numBooked} more to run</span>`}
           </div>
           <div class="session-players-row">
-            <div class="player-avatars">${avatars || '<span style="font-size:12px; color:var(--text-muted);">Be the firstt!</span>'}${emptyAv}</div>
+            <div class="player-avatars">${avatars || '<span style="font-size:12px; color:var(--text-muted);">Be the first!</span>'}${emptyAv}</div>
             <span class="spots-text ${spotsLeft === 0 ? 'full' : ''}">${spotsLeft === 0 ? "Full" : `${spotsLeft} spot${spotsLeft > 1 ? "s" : ""} left`}</span>
           </div>
           <div class="fill-bar-bg">
             <div class="fill-bar ${fill === 100 ? 'full' : ''}" style="width:${fill}%"></div>
           </div>
-          ${numBooked > 0 ? `
-          <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
-            <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Who's playing</div>
-            <div style="display:flex; flex-wrap:wrap; gap:6px;">
-              ${(s.bookedUserIds || []).map(uid => {
-                const u = usersList.find(x => x.id === uid);
-                if (!u) return '';
-                const firstName = u.name.split(' ')[0];
-                return '<span style="background:var(--surface); border:1px solid var(--border); border-radius:100px; padding:3px 10px; font-size:12px; font-weight:500;">' + firstName + '</span>';
-              }).join('')}
-            </div>
-          </div>` : ''}
         </div>`;
     }).join("");
   }
@@ -2982,7 +3031,7 @@
     if (!ids || ids.length === 0) return;
     // Update main video frame
     const frame = document.getElementById('coachVideoFrame');
-    if (frame) frame.src = `https://www.youtube.com/embed/${ids[0]}?rel=0&modestbranding=1&loop=1&playlist=${ids[0]}`;
+    if (frame) frame.src = `https://www.youtube-nocookie.com/embed/${ids[0]}`;
     // Update thumbnails
     const thumbContainer = document.querySelector('#coach .thumb-row');
     if (thumbContainer) {
@@ -3514,10 +3563,17 @@
       const spotsLeft = s.totalSpots - s.bookedUserIds.length;
       const fill = Math.round((s.bookedUserIds.length / s.totalSpots) * 100);
       const userBooked = s.bookedUserIds.includes(platform.currentUser.id);
-      const avatars = s.bookedUserIds.map(uid => {
+      const colors = ["#FF6B35","#5B8CFF","#00C896","#9B59B6","#E24B4A","#F5A623"];
+      const emojis = ["🏸","⚡","🔥","💪","🎯","✨","🌟","🚀"];
+      const avatars = s.bookedUserIds.map((uid, i) => {
         const u = platform.users.find(x => x.id === uid);
         if (!u) return "";
-        return `<div class="av" style="background:${avatarColors[uid % avatarColors.length]}">${u.name.charAt(0).toUpperCase()}</div>`;
+        const nameParts = u.name.split(' ');
+        const initials = nameParts.length > 1 
+          ? (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase()
+          : u.name.substring(0, 2).toUpperCase();
+        const emoji = emojis[i % emojis.length];
+        return `<div class="av" style="background:${colors[i % colors.length]}" title="${u.name}">${emoji}${initials}</div>`;
       }).join("");
       const emptyAv = spotsLeft > 0 ? `<div class="av av-empty">+${spotsLeft}</div>` : "";
       return `
@@ -3529,7 +3585,7 @@
             </div>
             <div>
               <div style="font-family:var(--font-display); font-size:20px; font-weight:800;">$${s.price}</div>
-              <div style="font-size:10px; color:var(--text-muted); text-align:right;">per person</div>
+              <div style="font-size:10px; color:var(--text-muted); text-align:right;">per hour</div>
             </div>
           </div>
           <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
@@ -3540,22 +3596,10 @@
             ${userBooked ? '<span class="badge badge-beg">✓ Booked</span>' : ''}
           </div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <div class="player-avatars">${avatars || '<span style="font-size:12px; color:var(--text-muted);">Be the firstt!</span>'}${emptyAv}</div>
+            <div class="player-avatars">${avatars || '<span style="font-size:12px; color:var(--text-muted);">Be the first!</span>'}${emptyAv}</div>
             <span class="spots-text ${spotsLeft === 0 ? 'full' : ''}">${spotsLeft === 0 ? "Full" : `${spotsLeft} left`}</span>
           </div>
           <div class="fill-bar-bg"><div class="fill-bar ${fill === 100 ? 'full' : ''}" style="width:${fill}%"></div></div>
-          ${s.bookedUserIds.length > 0 ? `
-          <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
-            <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Who's playing</div>
-            <div style="display:flex; flex-wrap:wrap; gap:6px;">
-              ${s.bookedUserIds.map(uid => {
-                const u = platform.users.find(x => x.id === uid);
-                if (!u) return '';
-                const firstName = u.name.split(' ')[0];
-                return `<span style="background:var(--surface); border:1px solid var(--border); border-radius:100px; padding:3px 10px; font-size:12px; font-weight:500;">${firstName}</span>`;
-              }).join('')}
-            </div>
-          </div>` : ''}
         </div>`;
     }).join("");
   }
@@ -3709,8 +3753,10 @@
     });
     
     // Update prices
-    const basePrice = session.price;
-    const totalBase = basePrice * qty;
+    // Price in database is per-hour rate, calculate total for full session
+    const durationHours = (session.duration || 60) / 60;
+    const pricePerSession = Math.round(session.price * durationHours);
+    const totalBase = pricePerSession * qty;
     let discount = 0;
     if (qty === 5) discount = 0.05;
     if (qty === 10) discount = 0.10;
@@ -3798,15 +3844,22 @@
     platform.bookingSessionId = sid;
     bulkBookingQty = 1; // Reset to single session
     document.getElementById("bookModalVenue").textContent = s.venue;
-    document.getElementById("bookModalPrice").textContent = `$${s.price}`;
+    
+    // Calculate total price: hourly rate × hours
+    const durationHours = (s.duration || 60) / 60;
+    const totalPrice = Math.round(s.price * durationHours);
+    document.getElementById("bookModalPrice").textContent = `$${totalPrice}`;
     
     // Initialize bulk buttons
     selectBulkQty(1);
     const minToRun = s.minSpots || 2;
     const runStatus = s.bookedUserIds.length + 1 >= minToRun ? "Confirmed once you book ✓" : `Needs ${minToRun - (s.bookedUserIds.length + 1)} more after you`;
+    const timeRange = formatTimeRange(s.time, s.duration || 60);
+    const durationDisplay = durationHours === 1 ? '1 hr' : `${durationHours} hrs`;
     document.getElementById("bookModalRows").innerHTML = [
       ["Court", s.court],
-      ["Date & Time", `${formatSessionDate(s.startsAt, s.date)} at ${s.time}`],
+      ["Date & Time", `${formatSessionDate(s.startsAt, s.date)} · ${timeRange}`],
+      ["Duration", durationDisplay],
       ["Level", s.level],
       ["Coach", s.coach],
       ["Spots left", `${s.totalSpots - s.bookedUserIds.length} of ${s.totalSpots}`],
@@ -3852,9 +3905,11 @@
     }
     console.log('Booking session:', s);
 
-    const basePrice = s.price;
+    // Price in database is per-hour rate, calculate total for full session
+    const durationHours = (s.duration || 60) / 60;
+    const pricePerSession = Math.round(s.price * durationHours);
     const qty = bulkBookingQty;
-    const totalBase = basePrice * qty;
+    const totalBase = pricePerSession * qty;
     let discount = 0;
     if (qty === 5) discount = 0.05;
     if (qty === 10) discount = 0.10;
@@ -3895,14 +3950,14 @@
     }
 
     // Calculate price per session with discount
-    const pricePerSession = Math.round(finalPrice / sessionsToBook.length);
+    const discountedPricePerSession = Math.round(finalPrice / sessionsToBook.length);
     
     // Create bookings for each session
     const bookingPromises = sessionsToBook.map(async (session) => {
       const { data: newBooking, error } = await sb.from('bookings').insert({
         user_id: platform.currentUser.id,
         session_id: session.id,
-        amount_paid: pricePerSession,
+        amount_paid: discountedPricePerSession,
         quantity: 1, // Always 1 - this is for THIS session
         discount_percent: Math.round(discount * 100),
         status: 'awaiting_payment'
@@ -3927,7 +3982,7 @@
         session.bookings.push({
           userId: platform.currentUser.id,
           bookedAt: booking.booked_at,
-          amountPaid: pricePerSession,
+          amountPaid: discountedPricePerSession,
           quantity: 1,
           discountPercent: Math.round(discount * 100),
           status: "awaiting_payment",
@@ -5603,6 +5658,26 @@ document.addEventListener('DOMContentLoaded', function() {
       if (preview) preview.textContent = this.value || '4';
     });
   }
+  
+  // Check if coach video exists
+  const videoPlayer = document.getElementById('coachVideoPlayer');
+  const videoSource = document.getElementById('coachVideoSource');
+  const placeholder = document.getElementById('videoPlaceholder');
+  
+  if (videoPlayer && videoSource && placeholder) {
+    videoPlayer.addEventListener('loadeddata', function() {
+      // Video loaded successfully, hide placeholder
+      placeholder.style.display = 'none';
+    });
+    
+    videoPlayer.addEventListener('error', function() {
+      // Video failed to load, show placeholder
+      placeholder.style.display = 'flex';
+    });
+    
+    // Initial check
+    videoPlayer.load();
+  }
 });
 </script>
 
@@ -5611,33 +5686,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Video Editor Modal -->
 <div class="auth-overlay" id="videoEditorModal">
-  <div class="auth-card" style="max-width:500px;">
+  <div class="auth-card" style="max-width:600px;">
     <button class="auth-close" onclick="closeVideoEditor()">✕</button>
-    <h3 class="auth-title">Edit coach videos</h3>
-    <p class="auth-sub-small">Paste YouTube links (regular or Shorts). These appear on your public profile page.</p>
+    <h3 class="auth-title">Upload coach video</h3>
+    <p class="auth-sub-small">Upload your demo video to show on the public coach profile.</p>
 
-    <div style="margin-top:4px;">
-      <label class="auth-label">YouTube video URL</label>
-      <input type="text" class="auth-input" id="vid1" placeholder="https://youtube.com/shorts/abc123 or https://youtube.com/watch?v=abc123">
-      <div id="vid1Preview" style="margin-top:8px; border-radius:10px; overflow:hidden; display:none; aspect-ratio:16/9; background:#000;">
-        <iframe id="vid1Frame" style="width:100%; height:100%; border:none;" allowfullscreen></iframe>
+    <div style="margin-top:20px; padding:24px; background:#F8F9FA; border-radius:12px; border:2px dashed #DDD;">
+      <div style="text-align:center; margin-bottom:16px;">
+        <div style="font-size:48px; margin-bottom:8px;">🎬</div>
+        <div style="font-size:15px; font-weight:600; margin-bottom:4px;">How to add your video</div>
+        <div style="font-size:13px; color:#666; line-height:1.6;">
+          1. Export your video file (MP4 format recommended)<br>
+          2. Upload to your Cloudflare Pages deployment:<br>
+          <code style="background:white; padding:2px 8px; border-radius:4px; font-size:12px;">/public/videos/coach-demo.mp4</code><br>
+          3. Video will automatically appear on your site
+        </div>
+      </div>
+      
+      <div style="background:white; padding:16px; border-radius:8px; margin-top:16px;">
+        <div style="font-size:13px; font-weight:600; margin-bottom:8px; color:#333;">📝 Upload via GitHub:</div>
+        <div style="font-size:12px; color:#666; line-height:1.6;">
+          1. Go to your GitHub repo<br>
+          2. Create folder: <code style="background:#f5f5f5; padding:2px 6px; border-radius:3px;">public/videos/</code><br>
+          3. Upload file as: <code style="background:#f5f5f5; padding:2px 6px; border-radius:3px;">coach-demo.mp4</code><br>
+          4. Cloudflare will auto-deploy in ~1 minute
+        </div>
+      </div>
+      
+      <div style="background:#FFF3EC; padding:12px; border-radius:8px; margin-top:12px; border-left:3px solid #FF6B35;">
+        <div style="font-size:12px; color:#666;">
+          <strong style="color:#CC4A10;">💡 Tip:</strong> Keep video under 50MB for fast loading. Vertical (9:16) format works best for mobile.
+        </div>
       </div>
     </div>
 
-    <div style="background:#F7F8FC; border-radius:10px; padding:12px; margin-top:14px; font-size:12px; color:var(--text-muted); line-height:1.5;">
-      💡 Works with any YouTube link format:<br>
-      <code style="font-size:11px; background:white; padding:1px 5px; border-radius:4px;">youtube.com/watch?v=abc</code> or 
-      <code style="font-size:11px; background:white; padding:1px 5px; border-radius:4px;">youtube.com/shorts/abc</code> or
-      <code style="font-size:11px; background:white; padding:1px 5px; border-radius:4px;">youtu.be/abc</code>
-    </div>
-
-    <div id="videoEditorSuccess" style="display:none; background:#E8FFF6; color:#00A878; padding:10px 12px; border-radius:8px; font-size:13px; margin-top:12px; border:1px solid #00C896;">
-      ✓ Videos updated on your public page!
-    </div>
-    <div style="display:flex; gap:8px; margin-top:16px;">
-      <button class="btn-small ghost" onclick="closeVideoEditor()" style="flex:1;">Cancel</button>
-      <button class="btn-small black" onclick="saveVideos()" style="flex:1;">Save videos</button>
-    </div>
+    <button class="btn-ghost" onclick="closeVideoEditor()" style="width:100%; margin-top:20px;">Close</button>
   </div>
 </div>
 
