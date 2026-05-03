@@ -1551,6 +1551,21 @@
     .chip-sub { font-size: 11px; }
     .filter-pills { width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
     .pill, .filter-btn { white-space: nowrap; }
+    
+    /* Compress filter sections on mobile */
+    .filter-row { gap: 8px !important; }
+    .filter-row > div { gap: 4px !important; }
+    .filter-row span { display: none !important; } /* Hide "Quick:" and "Refine by:" labels */
+    .filter-btn { padding: 6px 10px !important; font-size: 11px !important; }
+    
+    /* Manager session cards - hide stats, show price */
+    .manager-stats { display: none !important; }
+    .mobile-price { display: inline-block !important; }
+  }
+  
+  /* Desktop - hide mobile price */
+  @media (min-width: 481px) {
+    .mobile-price { display: none !important; }
   }
 
 
@@ -5555,6 +5570,84 @@
     renderManagerSessions();
   }
   
+  function editGroupSeries(groupIdx) {
+    // Get all sessions in this group
+    const groups = buildManagerSessionGroups();
+    if (!groups[groupIdx]) return;
+    
+    const group = groups[groupIdx];
+    const firstSession = group.sessions[0];
+    
+    // Open edit modal for first session
+    // Note: Changes will need to be applied to other sessions manually
+    // Or manager can delete all and recreate the series
+    openEditSession(firstSession.id);
+    
+    // Show hint
+    showToast(`Editing first session in series of ${group.sessions.length}. To edit all, delete series and recreate.`);
+  }
+  
+  function deleteGroupSeries(groupIdx) {
+    const groups = buildManagerSessionGroups();
+    if (!groups[groupIdx]) return;
+    
+    const group = groups[groupIdx];
+    const sessionCount = group.sessions.length;
+    
+    if (!confirm(`Delete all ${sessionCount} sessions in this series?\n\n${group.venue} · ${group.court}\n${group.dayTime} · ${group.level}\n\nThis cannot be undone.`)) {
+      return;
+    }
+    
+    // Delete all sessions in the group
+    group.sessions.forEach(s => {
+      const sessionIdx = platform.platformSessions.findIndex(ps => ps.id === s.id);
+      if (sessionIdx !== -1) {
+        platform.platformSessions.splice(sessionIdx, 1);
+      }
+    });
+    
+    savePlatform();
+    renderManagerSessions();
+    showToast(`Deleted ${sessionCount} sessions`);
+  }
+  
+  function buildManagerSessionGroups() {
+    // Build groups exactly like renderManagerSessions does
+    const groups = {};
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    platform.platformSessions.forEach(s => {
+      const sessionDate = new Date(s.startsAt || s.date);
+      const dayOfWeek = s.date || dayNames[sessionDate.getDay()];
+      const key = `${s.venue}|${s.court}|${dayOfWeek}|${s.time}|${s.sessionType}|${s.level}|${s.price}`;
+      
+      if (!groups[key]) {
+        groups[key] = {
+          venue: s.venue,
+          court: s.court,
+          day: dayOfWeek,
+          time: s.time,
+          duration: s.duration || 60,
+          sessionType: s.sessionType,
+          level: s.level,
+          price: s.price,
+          ageRange: s.ageRange,
+          coach: s.coach,
+          sessions: []
+        };
+      }
+      groups[key].sessions.push(s);
+    });
+    
+    // Convert to array and sort by date (same as renderManagerSessions)
+    const groupedSessions = Object.values(groups).map(g => {
+      g.sessions.sort((a, b) => new Date(a.startsAt || a.date) - new Date(b.startsAt || b.date));
+      return g;
+    });
+    
+    return groupedSessions;
+  }
+  
   function renderManagerSessions() {
     const list = document.getElementById("managerSessionsList");
     
@@ -5685,16 +5778,17 @@
         <div style="background:white; border-radius:12px; border:2px solid var(--border); margin-bottom:16px; overflow:hidden; transition:all 0.2s;">
           <!-- Compact Group Header -->
           <div style="padding:14px 16px; background:${statusBg}; border-bottom:2px solid var(--border); cursor:pointer;" onclick="toggleGroupExpand(${idx})">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
               <div style="flex:1; min-width:0;">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap;">
                   <span style="font-size:18px;">${statusIcon}</span>
                   <div style="font-family:var(--font-display); font-size:15px; font-weight:700; white-space:nowrap;">${group.day}s ${timeRange}</div>
                   <span style="font-size:11px; padding:2px 6px; background:var(--white); border-radius:4px; color:var(--text-muted); font-weight:600;">${typeIcon} ${typeLabel}</span>
+                  <div class="mobile-price" style="font-size:16px; font-weight:800; font-family:var(--font-display); color:var(--green); margin-left:auto;">$${group.price}/hr</div>
                 </div>
                 <div style="font-size:12px; color:var(--text-mid); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${group.venue} · ${group.court} · ${group.level}</div>
               </div>
-              <div style="display:flex; gap:16px; align-items:center; flex-shrink:0;">
+              <div class="manager-stats" style="display:flex; gap:16px; align-items:center; flex-shrink:0;">
                 <div style="text-align:center;">
                   <div style="font-size:18px; font-weight:800; font-family:var(--font-display); color:var(--black);">${group.sessions.length}</div>
                   <div style="font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.3px;">Sessions</div>
