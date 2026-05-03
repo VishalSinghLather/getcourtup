@@ -2973,6 +2973,10 @@
   function updateFilterSummary() {
     const summary = document.getElementById('activeFiltersSummary');
     const summaryText = document.getElementById('filterSummaryText');
+    
+    // These elements might not exist on landing page - skip if null
+    if (!summary || !summaryText) return;
+    
     const filters = [];
     
     if (advancedFilters.timePeriod) {
