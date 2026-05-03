@@ -2271,69 +2271,56 @@
         </div>
       </div>
       
-      <div class="filter-row" style="display:flex; flex-direction:column; gap:16px;">
-        <!-- Quick Time Filters -->
-        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-          <span style="font-size:13px; font-weight:600; color:var(--text-muted); margin-right:8px;">Quick:</span>
-          <button class="filter-btn" id="filterThisWeek" onclick="filterByTimePeriod('thisWeek', this)">📅 This Week</button>
-          <button class="filter-btn" id="filterNextWeek" onclick="filterByTimePeriod('nextWeek', this)">⏭️ Next Week</button>
-          <button class="filter-btn" id="filterWeekend" onclick="filterByTimePeriod('weekend', this)">🎉 Weekend</button>
-          <button class="filter-btn" id="filterThisMonth" onclick="filterByTimePeriod('thisMonth', this)">📆 This Month</button>
-          <button class="filter-btn" id="filterAvailable" onclick="toggleAvailableOnly(this)" style="margin-left:auto; background:var(--white); border:2px solid var(--green); color:var(--green-dark); font-weight:600;">
-            <span id="availableIcon">☐</span> Available Only
+      <div class="filter-row" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:16px;">
+        <!-- Time Filters -->
+        <button class="filter-btn" id="filterThisWeek" onclick="filterByTimePeriod('thisWeek', this)">📅 This Week</button>
+        <button class="filter-btn" id="filterNextWeek" onclick="filterByTimePeriod('nextWeek', this)">⏭️ Next Week</button>
+        
+        <!-- Day Dropdown -->
+        <div style="position:relative; display:inline-block;">
+          <button class="filter-btn" id="dayDropdownBtn" onclick="toggleDropdown('dayDropdown')" style="padding:8px 16px;">
+            🗓️ <span id="dayFilterLabel">All Days</span> ▼
           </button>
+          <div id="dayDropdown" style="display:none; position:absolute; top:100%; left:0; margin-top:4px; background:white; border:2px solid var(--border); border-radius:10px; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,0.1); z-index:100;">
+            <div class="dropdown-item" onclick="filterByDay('all')">All Days</div>
+            <div class="dropdown-item" onclick="filterByDay('Monday')">Monday</div>
+            <div class="dropdown-item" onclick="filterByDay('Tuesday')">Tuesday</div>
+            <div class="dropdown-item" onclick="filterByDay('Wednesday')">Wednesday</div>
+            <div class="dropdown-item" onclick="filterByDay('Thursday')">Thursday</div>
+            <div class="dropdown-item" onclick="filterByDay('Friday')">Friday</div>
+            <div class="dropdown-item" onclick="filterByDay('Saturday')">Saturday</div>
+            <div class="dropdown-item" onclick="filterByDay('Sunday')">Sunday</div>
+          </div>
         </div>
         
-        <!-- Refine Filters -->
-        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-          <span style="font-size:13px; font-weight:600; color:var(--text-muted); margin-right:8px;">Refine by:</span>
-          
-          <!-- Day Dropdown -->
-          <div style="position:relative; display:inline-block;">
-            <button class="filter-btn" id="dayDropdownBtn" onclick="toggleDropdown('dayDropdown')" style="padding:8px 16px;">
-              🗓️ <span id="dayFilterLabel">All Days</span> ▼
-            </button>
-            <div id="dayDropdown" style="display:none; position:absolute; top:100%; left:0; margin-top:4px; background:white; border:2px solid var(--border); border-radius:10px; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,0.1); z-index:100;">
-              <div class="dropdown-item" onclick="filterByDay('all')">All Days</div>
-              <div class="dropdown-item" onclick="filterByDay('Monday')">Monday</div>
-              <div class="dropdown-item" onclick="filterByDay('Tuesday')">Tuesday</div>
-              <div class="dropdown-item" onclick="filterByDay('Wednesday')">Wednesday</div>
-              <div class="dropdown-item" onclick="filterByDay('Thursday')">Thursday</div>
-              <div class="dropdown-item" onclick="filterByDay('Friday')">Friday</div>
-              <div class="dropdown-item" onclick="filterByDay('Saturday')">Saturday</div>
-              <div class="dropdown-item" onclick="filterByDay('Sunday')">Sunday</div>
-            </div>
-          </div>
-          
-          <!-- Level Dropdown -->
-          <div style="position:relative; display:inline-block;">
-            <button class="filter-btn" id="levelDropdownBtn" onclick="toggleDropdown('levelDropdown')" style="padding:8px 16px;">
-              🎯 <span id="levelFilterLabel">All Levels</span> ▼
-            </button>
-            <div id="levelDropdown" style="display:none; position:absolute; top:100%; left:0; margin-top:4px; background:white; border:2px solid var(--border); border-radius:10px; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,0.1); z-index:100;">
-              <div class="dropdown-item" onclick="filterByLevel('all')">All Levels</div>
-              <div class="dropdown-item" onclick="filterByLevel('Beginner')">Beginner</div>
-              <div class="dropdown-item" onclick="filterByLevel('Intermediate')">Intermediate</div>
-              <div class="dropdown-item" onclick="filterByLevel('Advanced')">Advanced</div>
-            </div>
-          </div>
-          
-          <!-- Type Buttons (Keep separate as requested) -->
-          <button class="filter-btn active" id="filterAll" onclick="filterSessions('All', this)">All</button>
-          <button class="filter-btn" id="filterSocial" onclick="filterSessions('social', this)">🤝 Social</button>
-          <button class="filter-btn" id="filterGroup" onclick="filterSessions('group', this)">👥 Group</button>
-          <button class="filter-btn" id="filterPrivate" onclick="filterSessions('private', this)">👤 Private</button>
-          
-          <!-- Clear All -->
-          <button class="filter-btn" onclick="clearAllNewFilters()" style="margin-left:auto; color:var(--text-muted); border-color:var(--border);">
-            ✕ Clear All
+        <!-- Level Dropdown -->
+        <div style="position:relative; display:inline-block;">
+          <button class="filter-btn" id="levelDropdownBtn" onclick="toggleDropdown('levelDropdown')" style="padding:8px 16px;">
+            🎯 <span id="levelFilterLabel">All Levels</span> ▼
           </button>
+          <div id="levelDropdown" style="display:none; position:absolute; top:100%; left:0; margin-top:4px; background:white; border:2px solid var(--border); border-radius:10px; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,0.1); z-index:100;">
+            <div class="dropdown-item" onclick="filterByLevel('all')">All Levels</div>
+            <div class="dropdown-item" onclick="filterByLevel('Beginner')">Beginner</div>
+            <div class="dropdown-item" onclick="filterByLevel('Intermediate')">Intermediate</div>
+            <div class="dropdown-item" onclick="filterByLevel('Advanced')">Advanced</div>
+          </div>
         </div>
         
-        <!-- Active Filters Summary -->
-        <div id="activeFiltersSummary" style="display:none; font-size:13px; color:var(--text-mid); padding:8px 12px; background:var(--surface); border-radius:8px;">
-          <span style="font-weight:600;">Showing:</span> <span id="filterSummaryText"></span>
-        </div>
+        <!-- Type Buttons -->
+        <button class="filter-btn active" id="filterAll" onclick="filterSessions('All', this)">All</button>
+        <button class="filter-btn" id="filterSocial" onclick="filterSessions('social', this)">🤝 Social</button>
+        <button class="filter-btn" id="filterGroup" onclick="filterSessions('group', this)">👥 Group</button>
+        <button class="filter-btn" id="filterPrivate" onclick="filterSessions('private', this)">👤 Private</button>
+        
+        <!-- Available Only -->
+        <button class="filter-btn" id="filterAvailable" onclick="toggleAvailableOnly(this)" style="margin-left:auto; background:var(--white); border:2px solid var(--green); color:var(--green-dark); font-weight:600;">
+          <span id="availableIcon">☐</span> Available Only
+        </button>
+        
+        <!-- Clear All -->
+        <button class="filter-btn" onclick="clearAllFilters()" style="color:var(--text-muted); border-color:var(--border);">
+          ✕ Clear All
+        </button>
       </div>
     </div>
     <!-- End Sticky Filters -->
