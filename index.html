@@ -1561,6 +1561,32 @@
     /* Manager session cards - hide stats, show price */
     .manager-stats { display: none !important; }
     .mobile-price { display: inline-block !important; }
+    
+    /* Calendar - ensure all 7 days fit on mobile */
+    .calendar-view { 
+      margin: 0 -12px; /* Extend to screen edges */
+      border-radius: 12px;
+    }
+    .calendar-grid {
+      width: 100%;
+      min-width: 100%;
+    }
+    .calendar-day-header {
+      padding: 8px 4px !important;
+      font-size: 10px !important;
+    }
+    .calendar-day {
+      min-height: 80px !important;
+      padding: 4px !important;
+      font-size: 10px !important;
+    }
+    .calendar-day-number {
+      font-size: 12px !important;
+    }
+    .calendar-session-dot {
+      font-size: 9px !important;
+      padding: 2px 4px !important;
+    }
   }
   
   /* Desktop - hide mobile price */
