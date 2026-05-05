@@ -3273,7 +3273,8 @@
     const sessionsByDate = {};
     list.forEach(s => {
       const sessionDate = new Date(s.startsAt || s.date);
-      const dateKey = sessionDate.toISOString().split('T')[0];
+      // Use local date string to avoid timezone issues
+      const dateKey = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}-${String(sessionDate.getDate()).padStart(2, '0')}`;
       if (!sessionsByDate[dateKey]) sessionsByDate[dateKey] = [];
       sessionsByDate[dateKey].push(s);
     });
@@ -3307,7 +3308,8 @@
     
     for (let day = 1; day <= daysInMonth; day++) {
       const currentDate = new Date(year, month, day);
-      const dateKey = currentDate.toISOString().split('T')[0];
+      // Use local date string instead of UTC to avoid timezone offset
+      const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const isToday = currentDate.getTime() === today.getTime();
       const sessions = sessionsByDate[dateKey] || [];
       
@@ -7225,11 +7227,15 @@
       showAppToast(`Player ${name} created (no login access)`);
     }
     
+    // Calculate correct price based on duration
+    const durationHours = (s.duration || 60) / 60;
+    const correctPrice = Math.round(s.price * durationHours);
+    
     // Create booking as "awaiting_payment" (manager will mark as paid after receiving payment)
     const { data: newBooking, error } = await sb.from('bookings').insert({
       user_id: userId,
       session_id: sessionId,
-      amount_paid: s.price,
+      amount_paid: correctPrice,
       quantity: 1,
       discount_percent: 0,
       status: 'awaiting_payment',
@@ -7248,13 +7254,40 @@
     s.bookings.push({
       userId: userId,
       bookedAt: newBooking.booked_at,
-      amountPaid: s.price,
+      amountPaid: correctPrice,
       quantity: 1,
       discountPercent: 0,
       status: 'awaiting_payment',
       paidAt: null,
       dbId: newBooking.id
     });
+    
+    // Send booking confirmation email to the player
+    const addedUser = platform.users.find(u => u.id === userId);
+    if (addedUser && addedUser.email) {
+      const sessionInfo = `${formatSessionDate(s.startsAt, s.date)} ${formatTimeRange(s.time, s.duration || 60)} · ${s.court}`;
+      const reference = buildRef(s, addedUser, 1);
+      
+      sendNotification({
+        type: "booking_added_by_manager",
+        playerName: addedUser.name,
+        playerEmail: addedUser.email,
+        playerPhone: addedUser.phone || '',
+        sessionInfo: sessionInfo,
+        amount: correctPrice,
+        quantity: 1,
+        reference: reference,
+        payIdPhone: '0456 231 911',
+        payIdName: 'Vishal Singh Lather',
+        venue: s.venue,
+        court: s.court,
+        time: formatTimeRange(s.time, s.duration || 60),
+        date: formatSessionDate(s.startsAt, s.date),
+        sessionType: s.sessionType,
+        level: s.level,
+        awaitingPayment: true  // Mark that payment is pending
+      });
+    }
     
     closeAddPlayerModal();
     showAppToast(`✓ ${userName} added to session`);
