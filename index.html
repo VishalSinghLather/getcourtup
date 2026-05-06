@@ -3389,7 +3389,7 @@
 
   // ============ SUPABASE SETUP ============
   const SUPABASE_URL = "https://lfhnkgzellqtwzzioaib.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_d6PYfXt-G2gLwRxOyzEFng_LK6VbEWN";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaG5rZ3plbGxxdHd6emlvYWliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMDQ1MzIsImV4cCI6MjA5MjU4MDUzMn0.ZzVopDQuWy4qSE4KOiL7rZStCGh5f7ssxwFmakbitrQ";
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
       persistSession: false,
@@ -3550,6 +3550,7 @@
     bookingSessionId: null,
     pendingBookId: null,
     cancelingSessionId: null,
+    discountCodes: [], // Loaded from localStorage
     payId: {
       phone: "0402 004 683",
       name: "Vishal Singh Lather"
@@ -3561,6 +3562,31 @@
     },
   };
   window.platform = platform; // make accessible to renderSessions which runs earlier
+  
+  // Load discount codes from localStorage
+  function loadDiscountCodes() {
+    try {
+      const stored = localStorage.getItem('discountCodes');
+      if (stored) {
+        platform.discountCodes = JSON.parse(stored);
+      }
+    } catch (e) {
+      console.error('Error loading discount codes:', e);
+      platform.discountCodes = [];
+    }
+  }
+  
+  // Save discount codes to localStorage
+  function savePlatform() {
+    try {
+      localStorage.setItem('discountCodes', JSON.stringify(platform.discountCodes));
+    } catch (e) {
+      console.error('Error saving discount codes:', e);
+    }
+  }
+  
+  // Load codes on startup
+  loadDiscountCodes();
 
   // ============ DATABASE LOADERS ============
   async function loadAllData() {
@@ -5312,17 +5338,15 @@
       }
     });
     
-    // Update prices
-    // Price in database is per-hour rate, calculate total for full session
-    const durationHours = (session.duration || 60) / 60;
-    const pricePerSession = Math.round(session.price * durationHours);
-    const totalBase = pricePerSession * qty;
-    let discount = 0;
-    if (qty === 5) discount = 0.05;
-    if (qty === 10) discount = 0.10;
-    const finalPrice = Math.round(totalBase * (1 - discount));
+    // Update quantity label
+    if (qty > 1) {
+      document.getElementById('bulkQtyLabel').textContent = '(' + qty + ' sessions)';
+    } else {
+      document.getElementById('bulkQtyLabel').textContent = '';
+    }
     
-    document.getElementById('bookModalPrice').textContent = '$' + finalPrice;
+    // Recalculate price (includes discount if applied)
+    recalculateBookingPrice();
     
     if (qty > 1) {
       document.getElementById('bulkQtyLabel').textContent = '(' + qty + ' sessions)';
@@ -5364,6 +5388,108 @@
       if (dateInfo) dateInfo.style.display = 'none';
     }
   }
+  
+  // Apply discount code
+  function applyDiscountCode() {
+    const codeInput = document.getElementById('discountCodeInput').value.trim().toUpperCase();
+    const messageDiv = document.getElementById('discountMessage');
+    const applyBtn = document.getElementById('applyDiscountBtn');
+    
+    if (!codeInput) {
+      messageDiv.textContent = 'Please enter a discount code';
+      messageDiv.style.color = 'var(--text-muted)';
+      messageDiv.style.display = 'block';
+      return;
+    }
+    
+    // Find the discount code
+    const discount = (platform.discountCodes || []).find(c => c.code === codeInput);
+    
+    if (!discount) {
+      messageDiv.textContent = '❌ Invalid discount code';
+      messageDiv.style.color = '#991B1B';
+      messageDiv.style.display = 'block';
+      platform.appliedDiscount = null;
+      return;
+    }
+    
+    // Check if expired
+    const now = new Date();
+    if (discount.expiryDate && new Date(discount.expiryDate) < now) {
+      messageDiv.textContent = '❌ This code has expired';
+      messageDiv.style.color = '#991B1B';
+      messageDiv.style.display = 'block';
+      platform.appliedDiscount = null;
+      return;
+    }
+    
+    // Check usage limit
+    if (discount.maxUses && discount.usedCount >= discount.maxUses) {
+      messageDiv.textContent = '❌ This code has reached its usage limit';
+      messageDiv.style.color = '#991B1B';
+      messageDiv.style.display = 'block';
+      platform.appliedDiscount = null;
+      return;
+    }
+    
+    // Apply the discount
+    platform.appliedDiscount = discount;
+    
+    messageDiv.textContent = `✓ ${discount.type === 'percentage' ? discount.value + '% off' : '$' + discount.value + ' off'} applied!`;
+    messageDiv.style.color = '#00A878';
+    messageDiv.style.display = 'block';
+    
+    applyBtn.textContent = '✓ Applied';
+    applyBtn.style.background = 'var(--green)';
+    applyBtn.style.color = 'var(--black)';
+    
+    // Recalculate price with discount
+    recalculateBookingPrice();
+  }
+  
+  // Recalculate booking price with discount
+  function recalculateBookingPrice() {
+    const session = platform.platformSessions.find(s => s.id === platform.bookingSessionId);
+    if (!session) return;
+    
+    const qty = bulkBookingQty || 1;
+    const durationHours = (session.duration || 60) / 60;
+    const pricePerSession = Math.round(session.price * durationHours);
+    let totalBase = pricePerSession * qty;
+    
+    // Apply bulk discount
+    let bulkDiscount = 0;
+    if (qty === 5) bulkDiscount = 0.05;
+    if (qty === 10) bulkDiscount = 0.10;
+    totalBase = Math.round(totalBase * (1 - bulkDiscount));
+    
+    let finalPrice = totalBase;
+    
+    // Apply discount code
+    if (platform.appliedDiscount) {
+      const discount = platform.appliedDiscount;
+      if (discount.type === 'percentage') {
+        finalPrice = Math.round(finalPrice * (1 - discount.value / 100));
+      } else {
+        finalPrice = Math.max(0, finalPrice - discount.value);
+      }
+      
+      // Show discount info
+      const discountInfo = document.getElementById('discountAppliedInfo');
+      discountInfo.textContent = `🎟️ Code ${discount.code} applied`;
+      discountInfo.style.display = 'block';
+      
+      // Show original price if different
+      if (finalPrice < totalBase) {
+        document.getElementById('bulkOriginalPrice').textContent = '$' + totalBase;
+        document.getElementById('bulkOriginalPrice').style.display = 'block';
+      }
+    } else {
+      document.getElementById('discountAppliedInfo').style.display = 'none';
+    }
+    
+    document.getElementById('bookModalPrice').textContent = '$' + finalPrice;
+  }
 
   function openAppBook(sid) {
     console.log('openAppBook called with session ID:', sid);
@@ -5402,7 +5528,17 @@
     
     console.log('Opening book modal...');
     platform.bookingSessionId = sid;
+    platform.appliedDiscount = null; // Reset discount
     bulkBookingQty = 1; // Reset to single session
+    
+    // Reset discount input
+    document.getElementById('discountCodeInput').value = '';
+    document.getElementById('discountMessage').style.display = 'none';
+    document.getElementById('applyDiscountBtn').textContent = 'Apply';
+    document.getElementById('applyDiscountBtn').style.background = '';
+    document.getElementById('applyDiscountBtn').style.color = '';
+    document.getElementById('discountAppliedInfo').style.display = 'none';
+    
     document.getElementById("bookModalVenue").textContent = s.venue;
     
     // Calculate total price: hourly rate × hours
@@ -5458,9 +5594,25 @@
   }
   async function confirmAppBooking() {
     console.log('confirmAppBooking called');
+    
+    // Prevent double-booking by disabling button
+    const bookBtn = document.querySelector('#bookModalApp button.green');
+    if (bookBtn && bookBtn.disabled) {
+      console.log('Booking already in progress, ignoring duplicate click');
+      return;
+    }
+    if (bookBtn) {
+      bookBtn.disabled = true;
+      bookBtn.textContent = 'Processing...';
+    }
+    
     const s = platform.platformSessions.find(x => x.id === platform.bookingSessionId);
     if (!s) {
       console.error('Session not found:', platform.bookingSessionId);
+      if (bookBtn) {
+        bookBtn.disabled = false;
+        bookBtn.textContent = 'Pay & book →';
+      }
       return;
     }
     console.log('Booking session:', s);
@@ -5469,13 +5621,33 @@
     const durationHours = (s.duration || 60) / 60;
     const pricePerSession = Math.round(s.price * durationHours);
     const qty = bulkBookingQty;
-    const totalBase = pricePerSession * qty;
-    let discount = 0;
-    if (qty === 5) discount = 0.05;
-    if (qty === 10) discount = 0.10;
-    const finalPrice = Math.round(totalBase * (1 - discount));
+    let totalBase = pricePerSession * qty;
     
-    console.log('Booking details:', { qty, pricePerSession, totalBase, discount, finalPrice });
+    // Apply bulk discount
+    let bulkDiscount = 0;
+    if (qty === 5) bulkDiscount = 0.05;
+    if (qty === 10) bulkDiscount = 0.10;
+    totalBase = Math.round(totalBase * (1 - bulkDiscount));
+    
+    let finalPrice = totalBase;
+    let discountCodeUsed = null;
+    
+    // Apply discount code if present
+    if (platform.appliedDiscount) {
+      const discount = platform.appliedDiscount;
+      if (discount.type === 'percentage') {
+        finalPrice = Math.round(finalPrice * (1 - discount.value / 100));
+      } else {
+        finalPrice = Math.max(0, finalPrice - discount.value);
+      }
+      discountCodeUsed = discount.code;
+      
+      // Increment usage count
+      discount.usedCount = (discount.usedCount || 0) + 1;
+      savePlatform();
+    }
+    
+    console.log('Booking details:', { qty, pricePerSession, totalBase, bulkDiscount, discountCodeUsed, finalPrice });
 
     // For bulk bookings (5 or 10 sessions), find the next recurring sessions
     let sessionsToBook = [s];
@@ -5519,7 +5691,8 @@
         session_id: session.id,
         amount_paid: discountedPricePerSession,
         quantity: 1, // Always 1 - this is for THIS session
-        discount_percent: Math.round(discount * 100),
+        discount_percent: Math.round(bulkDiscount * 100),
+        discount_code: discountCodeUsed,
         status: 'awaiting_payment'
       }).select().single();
 
@@ -5544,7 +5717,8 @@
           bookedAt: booking.booked_at,
           amountPaid: discountedPricePerSession,
           quantity: 1,
-          discountPercent: Math.round(discount * 100),
+          discountPercent: Math.round(bulkDiscount * 100),
+          discountCode: discountCodeUsed,
           status: "awaiting_payment",
           dbId: booking.id
         });
@@ -5563,7 +5737,7 @@
         sessionInfo: sessionInfo,
         amount: finalPrice,
         quantity: qty,
-        discount: Math.round(discount * 100),
+        discount: Math.round(bulkDiscount * 100),
         reference: buildRef(s, platform.currentUser, qty),
         payIdPhone: platform.payId.phone,
         payIdName: platform.payId.name
@@ -5581,7 +5755,7 @@
       document.getElementById("payIdAmount").textContent = `$${finalPrice}`;
       
       if (qty > 1) {
-        document.getElementById("payIdBulkInfo").textContent = `${qty} sessions · ${Math.round(discount * 100)}% discount`;
+        document.getElementById("payIdBulkInfo").textContent = `${qty} sessions · ${Math.round(bulkDiscount * 100)}% discount`;
       } else {
         document.getElementById("payIdBulkInfo").textContent = '';
       }
@@ -5598,6 +5772,13 @@
       showAppToast(`✓ Booked ${qty} session${qty > 1 ? 's' : ''}!`);
       
     } catch (error) {
+      // Re-enable button on error
+      const bookBtn = document.querySelector('#bookModalApp button.green');
+      if (bookBtn) {
+        bookBtn.disabled = false;
+        bookBtn.textContent = 'Pay & book →';
+      }
+      
       // Check for duplicate booking error
       if (error.code === '23505' || error.message?.includes('duplicate key')) {
         showAppToast("You already have a booking for one of these sessions!");
@@ -5698,6 +5879,7 @@
     if (tab === "bookings") renderManagerBookings();
     if (tab === "users") renderManagerUsers();
     if (tab === "analytics") renderAnalytics();
+    if (tab === "discounts") renderDiscountCodes();
   }
   function renderManagerStats() {
     const totalBookings = platform.platformSessions.reduce((acc, s) => acc + s.bookedUserIds.length, 0);
@@ -5733,9 +5915,17 @@
       </div>`;
   }
   let managerSessionSearch = '';
+  let sessionsFilter = 'all'; // 'all', 'upcoming', 'past'
   
   function searchManagerSessions(query) {
     managerSessionSearch = query.toLowerCase();
+    renderManagerSessions();
+  }
+  
+  function filterManagerSessions(filter, btn) {
+    sessionsFilter = filter;
+    document.querySelectorAll('#mtab-sessions .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
     renderManagerSessions();
   }
   
@@ -5819,9 +6009,17 @@
   
   function renderManagerSessions() {
     const list = document.getElementById("managerSessionsList");
+    const now = new Date();
+    
+    // Filter sessions by time (upcoming/past)
+    let sessions = platform.platformSessions;
+    if (sessionsFilter === 'upcoming') {
+      sessions = sessions.filter(s => new Date(s.startsAt || s.date) >= now);
+    } else if (sessionsFilter === 'past') {
+      sessions = sessions.filter(s => new Date(s.startsAt || s.date) < now);
+    }
     
     // Filter sessions by search query
-    let sessions = platform.platformSessions;
     if (managerSessionSearch) {
       sessions = sessions.filter(s => {
         const searchStr = `${s.venue} ${s.court} ${s.time} ${s.level} ${s.coach}`.toLowerCase();
@@ -5830,7 +6028,7 @@
     }
     
     if (sessions.length === 0) {
-      list.innerHTML = managerSessionSearch 
+      list.innerHTML = managerSessionSearch || sessionsFilter !== 'all'
         ? '<div class="empty-state"><div class="empty-state-icon">🔍</div>No sessions found.</div>'
         : '<div class="empty-state"><div class="empty-state-icon">📅</div>No sessions yet. Add your first one!</div>';
       return;
@@ -5863,6 +6061,11 @@
     const groupedSessions = Object.values(groups).map(g => {
       g.sessions.sort((a, b) => new Date(a.startsAt || a.date) - new Date(b.startsAt || b.date));
       return g;
+    }).sort((a, b) => {
+      // Sort groups by their first session's date
+      const dateA = new Date(a.sessions[0].startsAt || a.sessions[0].date);
+      const dateB = new Date(b.sessions[0].startsAt || b.sessions[0].date);
+      return dateA - dateB;
     });
     
     // Calculate stats
@@ -6038,7 +6241,7 @@
   };
   
   // Bookings filter state
-  let bookingsFilter = 'all'; // 'all', 'upcoming', 'past'
+  let bookingsFilter = 'all'; // 'all', 'upcoming', 'past', 'unpaid'
   let bookingsSearch = '';
   
   function filterManagerBookings(filter, btn) {
@@ -6094,12 +6297,14 @@
     }, {}));
     console.log('===================');
     
-    // Apply time filter (upcoming/past)
+    // Apply time filter (upcoming/past/unpaid)
     let filtered = all;
     if (bookingsFilter === 'upcoming') {
       filtered = all.filter(b => new Date(b.session.startsAt || b.session.date) >= now);
     } else if (bookingsFilter === 'past') {
       filtered = all.filter(b => new Date(b.session.startsAt || b.session.date) < now);
+    } else if (bookingsFilter === 'unpaid') {
+      filtered = all.filter(b => b.booking.status === 'awaiting_payment');
     }
     
     // Apply search filter
@@ -6949,6 +7154,318 @@
           }
         }
       });
+    }
+  }
+
+  // ------ DISCOUNT CODES ------
+  
+  // Render discount codes list
+  function renderDiscountCodes() {
+    const codes = platform.discountCodes || [];
+    const now = new Date();
+    
+    if (codes.length === 0) {
+      document.getElementById('discountCodesList').innerHTML = `
+        <div style="text-align:center; padding:60px 20px; color:var(--text-muted);">
+          <div style="font-size:48px; margin-bottom:16px;">🎟️</div>
+          <div style="font-size:16px; font-weight:600; margin-bottom:8px;">No discount codes yet</div>
+          <div style="font-size:14px;">Create discount codes to offer to your customers</div>
+        </div>
+      `;
+      return;
+    }
+    
+    const html = codes.map(code => {
+      const isExpired = code.expiryDate && new Date(code.expiryDate) < now;
+      const isMaxedOut = code.maxUses && code.usedCount >= code.maxUses;
+      const isActive = !isExpired && !isMaxedOut;
+      
+      return `
+        <div style="background:white; border:1.5px solid var(--border); border-radius:12px; padding:20px; margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">
+            <div>
+              <div style="font-family:var(--font-display); font-size:24px; font-weight:800; letter-spacing:1px; color:var(--black);">${code.code}</div>
+              <div style="font-size:14px; color:var(--text-mid); margin-top:4px;">
+                ${code.type === 'percentage' ? `${code.value}% off` : `$${code.value} off`}
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              ${isActive ? 
+                '<span style="background:#E8FFF6; color:#00A878; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:700;">Active</span>' :
+                '<span style="background:#FEF2F2; color:#991B1B; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:700;">' + (isExpired ? 'Expired' : 'Maxed out') + '</span>'
+              }
+            </div>
+          </div>
+          
+          ${code.description ? `<div style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">${code.description}</div>` : ''}
+          
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:16px;">
+            <div>
+              <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">USES</div>
+              <div style="font-weight:700;">${code.usedCount || 0}${code.maxUses ? ` / ${code.maxUses}` : ' (unlimited)'}</div>
+            </div>
+            ${code.expiryDate ? `
+              <div>
+                <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">EXPIRES</div>
+                <div style="font-weight:700;">${new Date(code.expiryDate).toLocaleDateString()}</div>
+              </div>
+            ` : ''}
+            <div>
+              <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">CREATED</div>
+              <div style="font-weight:700;">${new Date(code.createdAt).toLocaleDateString()}</div>
+            </div>
+          </div>
+          
+          <div style="display:flex; gap:8px;">
+            ${isActive ? `<button class="btn-small green" onclick="openSendDiscountModal('${code.code}')">📧 Send to customers</button>` : ''}
+            <button class="btn-small ghost" onclick="deleteDiscountCode('${code.code}')">🗑️ Delete</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    document.getElementById('discountCodesList').innerHTML = html;
+  }
+  
+  // Open create discount modal
+  function openCreateDiscountModal() {
+    document.getElementById('discountCode').value = '';
+    document.getElementById('discountType').value = 'percentage';
+    document.getElementById('discountValue').value = '';
+    document.getElementById('discountMaxUses').value = '';
+    document.getElementById('discountExpiry').value = '';
+    document.getElementById('discountDescription').value = '';
+    toggleDiscountValue();
+    document.getElementById('createDiscountModal').classList.add('open');
+  }
+  
+  function closeCreateDiscountModal() {
+    document.getElementById('createDiscountModal').classList.remove('open');
+  }
+  
+  // Toggle discount value prefix and hint
+  function toggleDiscountValue() {
+    const type = document.getElementById('discountType').value;
+    const prefix = document.getElementById('discountPrefix');
+    const hint = document.getElementById('discountHint');
+    
+    if (type === 'percentage') {
+      prefix.textContent = '%';
+      hint.textContent = 'Example: 10% off the total price';
+    } else {
+      prefix.textContent = '$';
+      hint.textContent = 'Example: $10 off the total price';
+    }
+  }
+  
+  // Create discount code
+  async function createDiscountCode() {
+    const code = document.getElementById('discountCode').value.trim().toUpperCase();
+    const type = document.getElementById('discountType').value;
+    const value = parseFloat(document.getElementById('discountValue').value);
+    const maxUses = document.getElementById('discountMaxUses').value ? parseInt(document.getElementById('discountMaxUses').value) : null;
+    const expiryDate = document.getElementById('discountExpiry').value || null;
+    const description = document.getElementById('discountDescription').value.trim();
+    
+    // Validation
+    if (!code || code.length < 3) {
+      alert('Please enter a code with at least 3 characters');
+      return;
+    }
+    
+    if (!/^[A-Z0-9]+$/.test(code)) {
+      alert('Code can only contain uppercase letters and numbers');
+      return;
+    }
+    
+    if (!value || value <= 0) {
+      alert('Please enter a valid discount value');
+      return;
+    }
+    
+    if (type === 'percentage' && value > 100) {
+      alert('Percentage discount cannot exceed 100%');
+      return;
+    }
+    
+    // Check if code already exists
+    if (!platform.discountCodes) platform.discountCodes = [];
+    if (platform.discountCodes.find(c => c.code === code)) {
+      alert('This code already exists. Please choose a different code.');
+      return;
+    }
+    
+    // Create discount code object
+    const newCode = {
+      code: code,
+      type: type,
+      value: value,
+      maxUses: maxUses,
+      expiryDate: expiryDate,
+      description: description,
+      usedCount: 0,
+      createdAt: new Date().toISOString(),
+      createdBy: platform.currentManager
+    };
+    
+    // Save to platform
+    platform.discountCodes.push(newCode);
+    savePlatform();
+    
+    // Close modal and refresh
+    closeCreateDiscountModal();
+    renderDiscountCodes();
+    alert(`✅ Discount code "${code}" created successfully!`);
+  }
+  
+  // Delete discount code
+  function deleteDiscountCode(code) {
+    if (!confirm(`Are you sure you want to delete the discount code "${code}"?`)) return;
+    
+    platform.discountCodes = (platform.discountCodes || []).filter(c => c.code !== code);
+    savePlatform();
+    renderDiscountCodes();
+  }
+  
+  // Open send discount modal
+  function openSendDiscountModal(code) {
+    const discount = platform.discountCodes.find(c => c.code === code);
+    if (!discount) return;
+    
+    document.getElementById('sendDiscountCodeDisplay').textContent = discount.code;
+    document.getElementById('sendDiscountDetails').textContent = 
+      discount.type === 'percentage' ? `${discount.value}% off` : `$${discount.value} off`;
+    
+    document.getElementById('sendDiscountTarget').value = 'all';
+    document.getElementById('discountEmailMessage').value = '';
+    document.getElementById('sendDiscountSuccess').style.display = 'none';
+    toggleCustomerSelect();
+    
+    // Store current code
+    platform.currentDiscountCode = code;
+    
+    document.getElementById('sendDiscountModal').classList.add('open');
+  }
+  
+  function closeSendDiscountModal() {
+    document.getElementById('sendDiscountModal').classList.remove('open');
+  }
+  
+  // Toggle customer select
+  function toggleCustomerSelect() {
+    const target = document.getElementById('sendDiscountTarget').value;
+    const wrap = document.getElementById('specificCustomersWrap');
+    
+    if (target === 'specific') {
+      wrap.style.display = 'block';
+      renderCustomerCheckboxList();
+    } else {
+      wrap.style.display = 'none';
+    }
+  }
+  
+  // Render customer checkbox list
+  function renderCustomerCheckboxList() {
+    const users = platform.users.filter(u => u.email);
+    const html = users.map(user => `
+      <label style="display:flex; align-items:center; padding:8px; cursor:pointer; border-radius:6px; transition:background 0.2s;" 
+             onmouseover="this.style.background='var(--surface)'" 
+             onmouseout="this.style.background='transparent'">
+        <input type="checkbox" class="customer-checkbox" value="${user.email}" 
+               onchange="updateSelectedCount()" 
+               style="margin-right:10px; width:16px; height:16px; cursor:pointer;">
+        <div style="flex:1;">
+          <div style="font-weight:600; font-size:13px;">${user.name || 'No name'}</div>
+          <div style="font-size:11px; color:var(--text-muted);">${user.email}</div>
+        </div>
+      </label>
+    `).join('');
+    
+    document.getElementById('customerCheckboxList').innerHTML = html || 
+      '<div style="padding:20px; text-align:center; color:var(--text-muted);">No registered users yet</div>';
+    updateSelectedCount();
+  }
+  
+  // Update selected count
+  function updateSelectedCount() {
+    const checked = document.querySelectorAll('.customer-checkbox:checked').length;
+    document.getElementById('selectedCount').textContent = checked;
+  }
+  
+  // Send discount email
+  async function sendDiscountEmail() {
+    const code = platform.currentDiscountCode;
+    const discount = platform.discountCodes.find(c => c.code === code);
+    if (!discount) return;
+    
+    const target = document.getElementById('sendDiscountTarget').value;
+    const message = document.getElementById('discountEmailMessage').value.trim();
+    const btn = document.getElementById('sendDiscountBtn');
+    
+    let recipients = [];
+    
+    if (target === 'all') {
+      recipients = platform.users.filter(u => u.email).map(u => ({ email: u.email, name: u.name }));
+    } else {
+      const checkboxes = document.querySelectorAll('.customer-checkbox:checked');
+      if (checkboxes.length === 0) {
+        alert('Please select at least one customer');
+        return;
+      }
+      recipients = Array.from(checkboxes).map(cb => {
+        const user = platform.users.find(u => u.email === cb.value);
+        return { email: cb.value, name: user?.name || 'Customer' };
+      });
+    }
+    
+    if (recipients.length === 0) {
+      alert('No recipients found. Please add users first.');
+      return;
+    }
+    
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    
+    try {
+      // Call Supabase Edge Function to send emails
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/send-discount-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        },
+        body: JSON.stringify({
+          recipients: recipients,
+          code: discount.code,
+          discountType: discount.type,
+          discountValue: discount.value,
+          message: message
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to send emails');
+      }
+      
+      const result = await response.json();
+      
+      document.getElementById('sendDiscountSuccess').style.display = 'block';
+      btn.textContent = '✓ Sent!';
+      
+      setTimeout(() => {
+        closeSendDiscountModal();
+        btn.disabled = false;
+        btn.textContent = 'Send email';
+      }, 2000);
+      
+      alert(`✅ Discount code sent to ${result.sent} customer(s)!`);
+      
+    } catch (error) {
+      console.error('Error sending discount emails:', error);
+      alert('Failed to send emails: ' + error.message);
+      btn.disabled = false;
+      btn.textContent = 'Send email';
     }
   }
 
@@ -8013,6 +8530,7 @@
       <button class="app-tab active" onclick="managerTab('sessions', this)">Sessions</button>
       <button class="app-tab" onclick="managerTab('bookings', this)">Bookings</button>
       <button class="app-tab" onclick="managerTab('analytics', this)">Analytics</button>
+      <button class="app-tab" onclick="managerTab('discounts', this)">🎟️ Discount codes</button>
       <button class="app-tab" onclick="managerTab('users', this)">Registered users</button>
     </div>
     <div class="app-tab-content active" id="mtab-sessions">
@@ -8031,8 +8549,13 @@
           id="managerSessionSearch"
           placeholder="🔍 Search sessions by venue, court, or time..."
           oninput="searchManagerSessions(this.value)"
-          style="width:100%; padding:12px 16px; border:2px solid var(--border); border-radius:10px; font-size:14px; font-family:var(--font-body);"
+          style="width:100%; padding:12px 16px; border:2px solid var(--border); border-radius:10px; font-size:14px; font-family:var(--font-body); margin-bottom:12px;"
         />
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="filter-btn active" onclick="filterManagerSessions('all', this)">📅 All Sessions</button>
+          <button class="filter-btn" onclick="filterManagerSessions('upcoming', this)">⏭️ Upcoming</button>
+          <button class="filter-btn" onclick="filterManagerSessions('past', this)">📜 Past</button>
+        </div>
       </div>
       
       <div id="managerSessionsList"></div>
@@ -8053,6 +8576,7 @@
           <button class="filter-btn active" onclick="filterManagerBookings('all', this)">📅 All Time</button>
           <button class="filter-btn" onclick="filterManagerBookings('upcoming', this)">⏭️ Upcoming</button>
           <button class="filter-btn" onclick="filterManagerBookings('past', this)">📜 Past</button>
+          <button class="filter-btn" onclick="filterManagerBookings('unpaid', this)">💰 Unpaid</button>
         </div>
       </div>
       
@@ -8071,6 +8595,16 @@
       </div>
       
       <div id="analyticsContent"></div>
+    </div>
+    
+    <!-- Discount Codes Tab -->
+    <div class="app-tab-content" id="mtab-discounts">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h3 style="font-family:var(--font-display); font-size:18px; font-weight:700;">🎟️ Discount Codes</h3>
+        <button class="btn-small green" onclick="openCreateDiscountModal()">+ Create code</button>
+      </div>
+      
+      <div id="discountCodesList"></div>
     </div>
     
     <div class="app-tab-content" id="mtab-users">
@@ -8099,9 +8633,21 @@
         <strong>📅 Session dates:</strong> <span id="bulkDateRange"></span>
       </div>
     </div>
+    
+    <!-- Discount Code Input -->
+    <div style="margin-top:16px;">
+      <label class="auth-label" style="margin-bottom:8px;">Have a discount code?</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" class="auth-input" id="discountCodeInput" placeholder="Enter code" style="flex:1; text-transform:uppercase;" maxlength="20">
+        <button class="btn-small ghost" onclick="applyDiscountCode()" id="applyDiscountBtn">Apply</button>
+      </div>
+      <div id="discountMessage" style="font-size:12px; margin-top:6px; display:none;"></div>
+    </div>
+    
     <div style="display:flex; justify-content:space-between; padding:16px 0 6px; margin-top:12px; border-top:1.5px solid var(--border);">
       <span style="font-weight:700;">Total <span id="bulkQtyLabel"></span></span>
       <div style="text-align:right;">
+        <div id="discountAppliedInfo" style="font-size:12px; color:var(--green); margin-bottom:2px; display:none;"></div>
         <div id="bulkOriginalPrice" style="font-size:12px; color:var(--text-muted); text-decoration:line-through; margin-bottom:2px; display:none;"></div>
         <span style="font-family:var(--font-display); font-size:24px; font-weight:800;" id="bookModalPrice">$45</span>
       </div>
@@ -8798,6 +9344,88 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
     
     <button class="auth-btn green" onclick="submitRating()" id="ratingBtn" style="margin-top:16px;">Submit rating →</button>
+  </div>
+</div>
+
+<!-- Create Discount Code Modal -->
+<div class="auth-overlay" id="createDiscountModal">
+  <div class="auth-box" style="max-width:500px; max-height:90vh; overflow-y:auto;">
+    <button class="auth-close" onclick="closeCreateDiscountModal()">✕</button>
+    <h3 class="auth-title" style="font-size:20px;">Create Discount Code</h3>
+    <p class="auth-sub-small" style="font-size:13px;">Create a discount code that customers can apply at checkout.</p>
+    
+    <label class="auth-label">Code name *</label>
+    <input type="text" class="auth-input" id="discountCode" placeholder="SUMMER2024" style="text-transform:uppercase;" maxlength="20">
+    <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Customers will enter this code. Use uppercase letters and numbers only.</p>
+    
+    <label class="auth-label" style="margin-top:16px;">Discount type *</label>
+    <select class="auth-input" id="discountType" onchange="toggleDiscountValue()">
+      <option value="percentage">Percentage off (%)</option>
+      <option value="fixed">Fixed amount ($)</option>
+    </select>
+    
+    <label class="auth-label" style="margin-top:16px;">Discount value *</label>
+    <div style="position:relative;">
+      <span id="discountPrefix" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-weight:600;"></span>
+      <input type="number" class="auth-input" id="discountValue" placeholder="10" min="1" style="padding-left:28px;">
+    </div>
+    <p style="font-size:12px; color:var(--text-muted); margin-top:4px;" id="discountHint">Example: 10% off the total price</p>
+    
+    <label class="auth-label" style="margin-top:16px;">Usage limit (optional)</label>
+    <input type="number" class="auth-input" id="discountMaxUses" placeholder="Unlimited" min="1">
+    <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Leave blank for unlimited uses</p>
+    
+    <label class="auth-label" style="margin-top:16px;">Expiry date (optional)</label>
+    <input type="date" class="auth-input" id="discountExpiry">
+    <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Leave blank for no expiration</p>
+    
+    <label class="auth-label" style="margin-top:16px;">Description (optional)</label>
+    <textarea class="auth-input" id="discountDescription" rows="2" placeholder="Summer promotion discount" style="resize:vertical;"></textarea>
+    
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn-small ghost" onclick="closeCreateDiscountModal()" style="flex:1;">Cancel</button>
+      <button class="btn-small green" onclick="createDiscountCode()" style="flex:1;">Create code</button>
+    </div>
+  </div>
+</div>
+
+<!-- Send Discount Code Modal -->
+<div class="auth-overlay" id="sendDiscountModal">
+  <div class="auth-box" style="max-width:500px; max-height:90vh; overflow-y:auto;">
+    <button class="auth-close" onclick="closeSendDiscountModal()">✕</button>
+    <h3 class="auth-title" style="font-size:20px;">Send Discount Code</h3>
+    <p class="auth-sub-small" style="font-size:13px;">Send this discount code to specific customers via email.</p>
+    
+    <div style="background:var(--green-light); border:1px solid var(--green); border-radius:8px; padding:16px; margin-bottom:20px;">
+      <div style="font-weight:700; font-size:24px; font-family:var(--font-display); color:var(--black); text-align:center; letter-spacing:1px;" id="sendDiscountCodeDisplay"></div>
+      <div style="text-align:center; margin-top:8px; font-size:13px; color:var(--text-mid);" id="sendDiscountDetails"></div>
+    </div>
+    
+    <label class="auth-label">Send to *</label>
+    <select class="auth-input" id="sendDiscountTarget" onchange="toggleCustomerSelect()">
+      <option value="all">All registered users</option>
+      <option value="specific">Specific customers</option>
+    </select>
+    
+    <div id="specificCustomersWrap" style="display:none; margin-top:16px;">
+      <label class="auth-label">Select customers</label>
+      <div style="max-height:200px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; padding:8px;">
+        <div id="customerCheckboxList"></div>
+      </div>
+      <p style="font-size:12px; color:var(--text-muted); margin-top:8px;">Selected: <span id="selectedCount">0</span> customers</p>
+    </div>
+    
+    <label class="auth-label" style="margin-top:16px;">Email message (optional)</label>
+    <textarea class="auth-input" id="discountEmailMessage" rows="4" placeholder="Enjoy this exclusive discount on your next booking!" style="resize:vertical;"></textarea>
+    
+    <div id="sendDiscountSuccess" style="display:none; background:#E8FFF6; color:#00A878; padding:12px; border-radius:8px; margin-top:16px; text-align:center; border:1px solid var(--green);">
+      ✓ Discount code sent successfully!
+    </div>
+    
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn-small ghost" onclick="closeSendDiscountModal()" style="flex:1;">Cancel</button>
+      <button class="btn-small green" onclick="sendDiscountEmail()" id="sendDiscountBtn" style="flex:1;">Send email</button>
+    </div>
   </div>
 </div>
 
