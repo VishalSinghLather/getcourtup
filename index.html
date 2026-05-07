@@ -4791,6 +4791,13 @@
     
     let list = platform.platformSessions;
     
+    // Filter out past sessions - customers can only book future sessions
+    const now = new Date();
+    list = list.filter(s => {
+      const sessionDate = new Date(s.startsAt || s.date);
+      return sessionDate >= now;
+    });
+    
     // Apply type filters
     if (platform.appFilters.types.size > 0) {
       list = list.filter(s => platform.appFilters.types.has(s.sessionType || 'group'));
@@ -4961,6 +4968,13 @@
     
     // Apply all the same filters as list view
     let sessions = platform.platformSessions;
+    
+    // Filter out past sessions - customers can only book future sessions
+    const now = new Date();
+    sessions = sessions.filter(s => {
+      const sessionDate = new Date(s.startsAt || s.date);
+      return sessionDate >= now;
+    });
     
     // Apply type filters
     if (platform.appFilters.types.size > 0) {
@@ -5272,6 +5286,8 @@
         const qty = myBooking ? (myBooking.quantity || 1) : 1;
         const ref = buildRef(s, platform.currentUser, qty);
         const displayPrice = myBooking ? (myBooking.amountPaid || s.price) : s.price;
+        const hasDiscount = myBooking && myBooking.discountPercent > 0;
+        const originalPrice = hasDiscount ? Math.round(displayPrice / (1 - myBooking.discountPercent / 100)) : null;
         
         // Session type badge
         const sessionTypeIcons = { 'social': '🤝', 'competitive': '⚡', 'learning': '📚' };
@@ -5287,11 +5303,13 @@
               <div style="font-size:12px; color:var(--text-muted);">${formatSessionDate(s.startsAt, s.date)} · ${formatTimeRange(s.time, s.duration || 60)} · ${s.court}</div>
               <div style="margin-top:4px;">
                 <span style="display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:2px 8px; font-size:11px; font-weight:600; color:var(--text-mid);">${sessionTypeIcon} ${sessionTypeLabel}</span>
+                ${qty > 1 ? `<span style="display:inline-block; background:var(--green-light); border:1px solid var(--green); border-radius:6px; padding:2px 8px; font-size:11px; font-weight:600; color:var(--green); margin-left:4px;">📦 ${qty} sessions</span>` : ''}
               </div>
             </div>
             <div>
-              <div style="font-family:var(--font-display); font-size:20px; font-weight:800;">$${displayPrice}</div>
-              <div style="font-size:10px; color:var(--text-muted); text-align:right;">${awaiting ? 'to pay' : 'paid'}</div>
+              ${hasDiscount ? `<div style="font-size:14px; color:var(--text-muted); text-decoration:line-through; text-align:right;">$${originalPrice}</div>` : ''}
+              <div style="font-family:var(--font-display); font-size:20px; font-weight:800; ${hasDiscount ? 'color:var(--green);' : ''}">$${displayPrice}</div>
+              <div style="font-size:10px; color:var(--text-muted); text-align:right;">${awaiting ? 'to pay' : 'paid'}${hasDiscount ? ` (${myBooking.discountPercent}% off)` : ''}</div>
             </div>
           </div>
           <div style="margin-bottom:10px;">
@@ -5318,7 +5336,7 @@
               48h+ before → 100% refund · 24–48h → 50% refund · under 24h → no refund
             </div>
           </div>
-          <button class="btn-small danger" style="width:100%;" onclick="cancelBooking(${s.id})" ${hrs < 0 ? 'disabled style="opacity:0.5; cursor:not-allowed; width:100%;"' : ''}>Cancel booking</button>
+          <button class="btn-small danger" onclick="cancelBooking(${s.id})" ${hrs < 0 ? 'disabled style="opacity:0.5; cursor:not-allowed; width:100%;"' : 'style="width:100%;"'}>Cancel booking</button>
         </div>`;
       }).join("")
     }</div>`;
@@ -5376,10 +5394,6 @@
     recalculateBookingPrice();
     
     if (qty > 1) {
-      document.getElementById('bulkQtyLabel').textContent = '(' + qty + ' sessions)';
-      document.getElementById('bulkOriginalPrice').textContent = '$' + totalBase;
-      document.getElementById('bulkOriginalPrice').style.display = 'block';
-      
       // Show date range for bulk bookings
       const dateInfo = document.getElementById('bulkDateInfo');
       const dateRange = document.getElementById('bulkDateRange');
@@ -5407,9 +5421,6 @@
         dateInfo.style.display = 'block';
       }
     } else {
-      document.getElementById('bulkQtyLabel').textContent = '';
-      document.getElementById('bulkOriginalPrice').style.display = 'none';
-      
       // Hide date info for single session
       const dateInfo = document.getElementById('bulkDateInfo');
       if (dateInfo) dateInfo.style.display = 'none';
@@ -5482,13 +5493,22 @@
     const qty = bulkBookingQty || 1;
     const durationHours = (session.duration || 60) / 60;
     const pricePerSession = Math.round(session.price * durationHours);
-    let totalBase = pricePerSession * qty;
+    let totalBeforeDiscount = pricePerSession * qty;
+    let totalBase = totalBeforeDiscount;
     
     // Apply bulk discount
     let bulkDiscount = 0;
     if (qty === 5) bulkDiscount = 0.05;
     if (qty === 10) bulkDiscount = 0.10;
-    totalBase = Math.round(totalBase * (1 - bulkDiscount));
+    
+    if (bulkDiscount > 0) {
+      totalBase = Math.round(totalBeforeDiscount * (1 - bulkDiscount));
+      // Show original price with strikethrough
+      document.getElementById('bulkOriginalPrice').textContent = '$' + totalBeforeDiscount;
+      document.getElementById('bulkOriginalPrice').style.display = 'block';
+    } else {
+      document.getElementById('bulkOriginalPrice').style.display = 'none';
+    }
     
     let finalPrice = totalBase;
     
@@ -5506,8 +5526,8 @@
       discountInfo.textContent = `🎟️ Code ${discount.code} applied`;
       discountInfo.style.display = 'block';
       
-      // Show original price if different
-      if (finalPrice < totalBase) {
+      // Show original price if different (only if not already shown from bulk)
+      if (finalPrice < totalBase && bulkDiscount === 0) {
         document.getElementById('bulkOriginalPrice').textContent = '$' + totalBase;
         document.getElementById('bulkOriginalPrice').style.display = 'block';
       }
@@ -6019,7 +6039,17 @@
     
     platform.platformSessions.forEach(s => {
       const sessionDate = new Date(s.startsAt || s.date);
-      const dayOfWeek = s.date || dayNames[sessionDate.getDay()];
+      // Always use the actual day from the date, not the stored s.date field
+      const dayOfWeek = dayNames[sessionDate.getDay()];
+      
+      console.log('Grouping session:', {
+        id: s.id,
+        startsAt: s.startsAt,
+        storedDate: s.date,
+        calculatedDay: dayOfWeek,
+        sessionDate: sessionDate.toISOString()
+      });
+      
       const key = `${s.venue}|${s.court}|${dayOfWeek}|${s.time}|${s.sessionType}|${s.level}|${s.price}`;
       
       if (!groups[key]) {
@@ -6044,7 +6074,19 @@
     const groupedSessions = Object.values(groups).map(g => {
       g.sessions.sort((a, b) => new Date(a.startsAt || a.date) - new Date(b.startsAt || b.date));
       return g;
+    }).sort((a, b) => {
+      // Sort groups by their first session's date
+      const dateA = new Date(a.sessions[0].startsAt || a.sessions[0].date);
+      const dateB = new Date(b.sessions[0].startsAt || b.sessions[0].date);
+      return dateA - dateB;
     });
+    
+    console.log('Built groups:', groupedSessions.map(g => ({
+      day: g.day,
+      time: g.time,
+      sessionCount: g.sessions.length,
+      firstSessionDate: g.sessions[0]?.startsAt
+    })));
     
     return groupedSessions;
   }
@@ -6216,6 +6258,7 @@
                   <div style="font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.3px;">Revenue</div>
                 </div>
                 <div style="display:flex; gap:6px;">
+                  <button class="btn-small green" onclick="event.stopPropagation(); openAddPlayerToGroupModal(${idx})" style="padding:6px 10px; font-size:11px;">+ Add to All</button>
                   <button class="btn-small ghost" onclick="event.stopPropagation(); editGroupSeries(${idx})" style="padding:6px 10px; font-size:11px;">Edit All</button>
                   <button class="btn-small danger" onclick="event.stopPropagation(); deleteGroupSeries(${idx})" style="padding:6px 10px; font-size:11px;">Delete All</button>
                 </div>
@@ -6249,7 +6292,34 @@
   
   // Edit entire series
   window.editGroupSeries = function(idx) {
-    showAppToast('Edit series feature - coming soon!');
+    const groups = buildManagerSessionGroups();
+    const group = groups[idx];
+    if (!group || group.sessions.length === 0) return;
+    
+    const firstSession = group.sessions[0];
+    
+    // Open recurring modal with current values
+    document.getElementById('rec_venue').value = firstSession.venue;
+    document.getElementById('rec_court').value = firstSession.court;
+    document.getElementById('rec_time').value = firstSession.time;
+    document.getElementById('rec_level').value = firstSession.level;
+    document.getElementById('rec_age').value = firstSession.ageGroup || '18+';
+    document.getElementById('rec_price').value = firstSession.price;
+    document.getElementById('rec_minSpots').value = firstSession.minSpots || 2;
+    document.getElementById('rec_spots').value = firstSession.totalSpots;
+    document.getElementById('rec_coach').value = firstSession.coach || platform.coachProfile.name;
+    document.getElementById('rec_type').value = firstSession.sessionType;
+    
+    // Store which group we're editing
+    platform.editingGroupIdx = idx;
+    
+    // Change button text if button exists
+    const submitBtn = document.querySelector('#recurringModal .btn-primary');
+    if (submitBtn) {
+      submitBtn.textContent = 'Update All Sessions';
+    }
+    
+    document.getElementById('recurringModal').classList.add('open');
   };
   
   // Delete entire series
@@ -6365,22 +6435,49 @@
       return;
     }
     
-    // Group bookings by session
-    const sessionGroups = {};
+    // Group bookings by recurring pattern (like Sessions tab)
+    const recurringGroups = {};
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
     filtered.forEach(b => {
-      const sessionKey = b.session.id;
-      if (!sessionGroups[sessionKey]) {
-        sessionGroups[sessionKey] = {
-          session: b.session,
-          bookings: []
+      const s = b.session;
+      const sessionDate = new Date(s.startsAt || s.date);
+      const dayOfWeek = dayNames[sessionDate.getDay()];
+      const key = `${s.venue}|${s.court}|${dayOfWeek}|${s.time}|${s.sessionType}|${s.level}`;
+      
+      if (!recurringGroups[key]) {
+        recurringGroups[key] = {
+          venue: s.venue,
+          court: s.court,
+          day: dayOfWeek,
+          time: s.time,
+          sessionType: s.sessionType,
+          level: s.level,
+          sessions: []
         };
       }
-      sessionGroups[sessionKey].bookings.push(b);
+      
+      // Add session if not already there
+      let existingSession = recurringGroups[key].sessions.find(sess => sess.id === s.id);
+      if (!existingSession) {
+        existingSession = {
+          ...s,
+          bookings: []
+        };
+        recurringGroups[key].sessions.push(existingSession);
+      }
+      
+      existingSession.bookings.push(b);
     });
     
-    // Convert to array and sort by date
-    const groupedBookings = Object.values(sessionGroups).sort((a, b) => {
-      return new Date(b.session.startsAt || b.session.date) - new Date(a.session.startsAt || a.session.date);
+    // Convert to array and sort
+    const groupedSessions = Object.values(recurringGroups).map(g => {
+      g.sessions.sort((a, b) => new Date(a.startsAt || a.date) - new Date(b.startsAt || b.date));
+      return g;
+    }).sort((a, b) => {
+      const dateA = new Date(a.sessions[0].startsAt || a.sessions[0].date);
+      const dateB = new Date(b.sessions[0].startsAt || b.sessions[0].date);
+      return dateA - dateB;
     });
     
     // Calculate totals
@@ -6415,106 +6512,99 @@
         </div>
       </div>`;
     
-    // Render grouped bookings
-    const groupsHTML = groupedBookings.map((group, idx) => {
-      const s = group.session;
-      const bookings = group.bookings;
-      
+    // Render grouped bookings (like Sessions tab)
+    const groupsHTML = groupedSessions.map((group, groupIdx) => {
       const typeIcons = { 'social': '🤝', 'group': '👥', 'private': '👤' };
-      const typeIcon = typeIcons[s.sessionType] || '👥';
+      const typeIcon = typeIcons[group.sessionType] || '👥';
       
-      const paidCount = bookings.filter(b => b.booking.status === 'paid' || b.booking.status === 'attended').length;
-      const awaitingCount = bookings.filter(b => b.booking.status === 'awaiting_payment').length;
-      const attendedCount = bookings.filter(b => b.booking.status === 'attended').length;
+      // Calculate group stats
+      const totalBookingsInGroup = group.sessions.reduce((sum, s) => sum + s.bookings.length, 0);
+      const paidInGroup = group.sessions.reduce((sum, s) => 
+        sum + s.bookings.filter(b => b.booking.status === 'paid' || b.booking.status === 'attended').length, 0);
+      const awaitingInGroup = totalBookingsInGroup - paidInGroup;
+      const revenueInGroup = group.sessions.reduce((sum, s) =>
+        sum + s.bookings.filter(b => b.booking.status === 'paid' || b.booking.status === 'attended')
+          .reduce((s2, b) => s2 + (b.booking.amountPaid || 0), 0), 0);
       
-      const sessionRevenue = bookings
-        .filter(b => b.booking.status === 'paid' || b.booking.status === 'attended')
-        .reduce((sum, b) => sum + (b.booking.amountPaid || 0), 0);
-      
-      const allPaid = awaitingCount === 0;
+      const allPaid = awaitingInGroup === 0;
       const statusBg = allPaid ? '#E8FFF6' : '#FFF3EC';
       const statusIcon = allPaid ? '💰' : '⚠️';
       
-      // Individual booking cards
-      const bookingCards = bookings.map(b => {
-        const awaiting = b.booking.status === "awaiting_payment";
-        const attended = b.booking.status === "attended";
-        const isPaid = b.booking.status === "paid";
+      // Individual session cards within the group
+      const sessionCards = group.sessions.map((s, idx) => {
+        const bookings = s.bookings;
+        const paidCount = bookings.filter(b => b.booking.status === 'paid' || b.booking.status === 'attended').length;
+        const awaitingCount = bookings.filter(b => b.booking.status === 'awaiting_payment').length;
         
-        return `
-          <div style="background:${awaiting ? '#FFF9F5' : '#F7FFF6'}; border:1px solid ${awaiting ? '#FFB74D' : '#00C896'}; border-radius:8px; padding:12px; margin-bottom:8px;">
-            <div style="display:flex; justify-content:space-between; align-items:start; gap:12px;">
-              <!-- Player Info -->
-              <div style="flex:1; min-width:0;">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                  <div class="table-avatar" style="width:32px; height:32px; font-size:14px; background:${avatarColors[b.user.id.toString().charCodeAt(0) % avatarColors.length]};">${b.user.name.charAt(0).toUpperCase()}</div>
-                  <div style="flex:1; min-width:0;">
-                    <div style="font-weight:700; font-size:14px;">${b.user.name}</div>
-                    <div style="font-size:11px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${b.user.email}</div>
-                  </div>
-                </div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap; font-size:11px;">
-                  <span style="padding:3px 8px; background:var(--white); border-radius:4px; font-weight:600;">
-                    ${awaiting ? '⚠ Awaiting $' + (b.booking.amountPaid || s.price) : '✓ Paid $' + (b.booking.amountPaid || s.price)}
-                  </span>
-                  <span style="padding:3px 8px; background:var(--white); border-radius:4px; color:var(--text-muted);">
-                    ${attended ? '✓ Attended' : 'Not marked'}
-                  </span>
-                  <code style="padding:3px 8px; background:var(--white); border-radius:4px; font-size:10px; font-weight:600; color:var(--text-muted);">${buildRef(s, b.user, b.booking.quantity || 1)}</code>
-                </div>
-              </div>
-              
-              <!-- Actions -->
-              <div style="display:flex; gap:4px; flex-shrink:0; flex-wrap:wrap;">
-                ${awaiting
-                  ? `<button class="btn-small green" onclick="markPaid(${s.id}, '${b.user.id}')" style="padding:5px 10px; font-size:11px;">Mark Paid</button>`
-                  : `<button class="btn-small ghost" onclick="markUnpaid(${s.id}, '${b.user.id}')" style="padding:5px 10px; font-size:11px;">Mark Unpaid</button>`}
-                ${!attended
-                  ? `<button class="btn-small" style="background:#EEF2FF;color:#3358CC;padding:5px 10px; font-size:11px;" onclick="markAttendance(${s.id}, '${b.user.id}', true)">✓ Attended</button>`
-                  : `<button class="btn-small ghost" onclick="markAttendance(${s.id}, '${b.user.id}', false)" style="padding:5px 10px; font-size:11px;">Undo</button>`}
-                <button class="btn-small danger" onclick="removePlayer(${s.id}, '${b.user.id}')" style="padding:5px 10px; font-size:11px;">Remove</button>
-              </div>
-            </div>
-          </div>`;
+        const bookingCards = bookings.map(b => {
+          const awaiting = b.booking.status === "awaiting_payment";
+          const attended = b.booking.status === "attended";
+          
+          return '<div style="background:' + (awaiting ? '#FFF9F5' : '#F7FFF6') + '; border:1px solid ' + (awaiting ? '#FFB74D' : '#00C896') + '; border-radius:8px; padding:12px; margin-bottom:8px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:start; gap:12px;">' +
+              '<div style="flex:1; min-width:0;">' +
+                '<div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">' +
+                  '<div style="width:32px; height:32px; border-radius:50%; background:var(--green-light); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:var(--green);">' + b.user.name.charAt(0).toUpperCase() + '</div>' +
+                  '<div style="flex:1; min-width:0;">' +
+                    '<div style="font-weight:700; font-size:14px;">' + b.user.name + '</div>' +
+                    '<div style="font-size:11px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis;">' + b.user.email + '</div>' +
+                  '</div>' +
+                '</div>' +
+                '<div style="display:flex; gap:8px; flex-wrap:wrap; font-size:11px;">' +
+                  '<span style="padding:3px 8px; background:var(--white); border-radius:4px; font-weight:600;">' +
+                    (awaiting ? '⚠ Awaiting $' + (b.booking.amountPaid || 0) : '✓ Paid $' + (b.booking.amountPaid || 0)) +
+                  '</span>' +
+                  '<span style="padding:3px 8px; background:var(--white); border-radius:4px; color:var(--text-muted);">' +
+                    (attended ? '✓ Attended' : 'Not marked') +
+                  '</span>' +
+                '</div>' +
+              '</div>' +
+              '<div style="display:flex; gap:4px; flex-shrink:0; flex-wrap:wrap;">' +
+                (awaiting 
+                  ? '<button class="btn-small green" onclick="markPaid(' + s.id + ', \'' + b.user.id + '\')" style="padding:5px 10px; font-size:11px;">Mark Paid</button>'
+                  : '<button class="btn-small ghost" onclick="markUnpaid(' + s.id + ', \'' + b.user.id + '\')" style="padding:5px 10px; font-size:11px;">Mark Unpaid</button>') +
+                (!attended
+                  ? '<button class="btn-small" style="background:#EEF2FF;color:#3358CC;padding:5px 10px; font-size:11px;" onclick="markAttendance(' + s.id + ', \'' + b.user.id + '\', true)">✓ Attended</button>'
+                  : '<button class="btn-small ghost" onclick="markAttendance(' + s.id + ', \'' + b.user.id + '\', false)" style="padding:5px 10px; font-size:11px;">Undo</button>') +
+                '<button class="btn-small danger" onclick="removePlayer(' + s.id + ', \'' + b.user.id + '\')" style="padding:5px 10px; font-size:11px;">Remove</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+        
+        return '<div style="background:#FAFAFA; border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:8px;">' +
+          '<div style="font-weight:600; font-size:13px; margin-bottom:8px; display:flex; justify-content:space-between;">' +
+            '<span>' + formatSessionDate(s.startsAt, s.date) + '</span>' +
+            '<span style="color:var(--text-muted); font-size:11px;">' + paidCount + '/' + bookings.length + ' paid</span>' +
+          '</div>' +
+          bookingCards +
+        '</div>';
       }).join('');
       
-      return `
-        <div style="background:white; border-radius:12px; border:2px solid var(--border); margin-bottom:16px; overflow:hidden;">
-          <!-- Session Header -->
-          <div style="padding:14px 16px; background:${statusBg}; border-bottom:2px solid var(--border); cursor:pointer;" onclick="toggleBookingGroup(${idx})">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
-              <div style="flex:1; min-width:0;">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-                  <span style="font-size:18px;">${statusIcon}</span>
-                  <div style="font-family:var(--font-display); font-size:15px; font-weight:700;">${formatSessionDate(s.startsAt, s.date)} · ${s.time}</div>
-                  <span style="font-size:11px; padding:2px 6px; background:var(--white); border-radius:4px; color:var(--text-muted); font-weight:600;">${typeIcon} ${s.sessionType}</span>
-                </div>
-                <div style="font-size:12px; color:var(--text-mid); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.venue} · ${s.court} · ${s.level}</div>
-              </div>
-              
-              <div style="display:flex; gap:16px; align-items:center; flex-shrink:0;">
-                <div style="text-align:center;">
-                  <div style="font-size:18px; font-weight:800; font-family:var(--font-display); color:var(--black);">${bookings.length}</div>
-                  <div style="font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.3px;">Players</div>
-                </div>
-                <div style="text-align:center;">
-                  <div style="font-size:18px; font-weight:800; font-family:var(--font-display); color:${allPaid ? 'var(--green)' : '#CC4A10'};">${paidCount}/${bookings.length}</div>
-                  <div style="font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.3px;">Paid</div>
-                </div>
-                <div style="text-align:center;">
-                  <div style="font-size:18px; font-weight:800; font-family:var(--font-display); color:var(--green);">$${sessionRevenue}</div>
-                  <div style="font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.3px;">Revenue</div>
-                </div>
-                <div id="bookingToggle${idx}" style="font-size:18px; transition:transform 0.2s; color:var(--text-muted);">▼</div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Bookings List -->
-          <div id="bookingGroup${idx}" style="display:none; padding:12px; background:var(--surface);">
-            ${bookingCards}
-          </div>
-        </div>`;
+      return '<div style="background:white; border-radius:12px; border:2px solid var(--border); margin-bottom:16px; overflow:hidden;">' +
+        '<div style="padding:14px 16px; background:' + statusBg + '; border-bottom:2px solid var(--border); cursor:pointer;" onclick="toggleBookingGroup(' + groupIdx + ')">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">' +
+            '<div style="flex:1; min-width:0;">' +
+              '<div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">' +
+                '<span style="font-size:18px;">' + statusIcon + '</span>' +
+                '<div style="font-family:var(--font-display); font-size:15px; font-weight:700;">' + group.day + 's ' + group.time + '</div>' +
+                '<span style="font-size:11px; padding:2px 6px; background:var(--white); border-radius:4px; color:var(--text-muted); font-weight:600;">' + typeIcon + '</span>' +
+              '</div>' +
+              '<div style="font-size:12px; color:var(--text-mid);">' + group.venue + ' · ' + group.court + ' · ' + group.level + '</div>' +
+            '</div>' +
+            '<div style="display:flex; gap:16px; align-items:center;">' +
+              '<div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:var(--black);">' + group.sessions.length + '</div><div style="font-size:9px; color:var(--text-muted); text-transform:uppercase;">Sessions</div></div>' +
+              '<div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:var(--black);">' + totalBookingsInGroup + '</div><div style="font-size:9px; color:var(--text-muted); text-transform:uppercase;">Bookings</div></div>' +
+              '<div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:' + (allPaid ? 'var(--green)' : '#CC4A10') + ';">' + paidInGroup + '/' + totalBookingsInGroup + '</div><div style="font-size:9px; color:var(--text-muted); text-transform:uppercase;">Paid</div></div>' +
+              '<div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:var(--green);">$' + revenueInGroup + '</div><div style="font-size:9px; color:var(--text-muted); text-transform:uppercase;">Revenue</div></div>' +
+              '<div id="bookingGroupToggle' + groupIdx + '" style="font-size:18px; color:var(--text-muted);">▼</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div id="bookingGroupSessions' + groupIdx + '" style="display:none; padding:12px; background:var(--surface);">' +
+          sessionCards +
+        '</div>' +
+      '</div>';
     }).join('');
     
     container.innerHTML = statsHTML + groupsHTML;
@@ -6522,8 +6612,8 @@
   
   // Toggle booking group expansion
   window.toggleBookingGroup = function(idx) {
-    const content = document.getElementById(`bookingGroup${idx}`);
-    const toggle = document.getElementById(`bookingToggle${idx}`);
+    const content = document.getElementById('bookingGroupSessions' + idx);
+    const toggle = document.getElementById('bookingGroupToggle' + idx);
     if (content.style.display === 'none') {
       content.style.display = 'block';
       toggle.style.transform = 'rotate(180deg)';
@@ -6532,7 +6622,7 @@
       toggle.style.transform = 'rotate(0deg)';
     }
   };
-
+  
   async function markPaid(sid, uid) {
     const s = platform.platformSessions.find(x => x.id === sid);
     if (!s) return;
@@ -7720,6 +7810,16 @@
   }
 
   async function confirmAddPlayer() {
+    // Check if adding to a group or single session
+    if (platform.addingPlayerToGroupIdx !== undefined) {
+      await confirmAddPlayerToGroup();
+    } else {
+      await confirmAddPlayerToSession();
+    }
+  }
+  
+  // Add player to single session
+  async function confirmAddPlayerToSession() {
     const sessionId = platform.addingPlayerToSessionId;
     const s = platform.platformSessions.find(x => x.id === sessionId);
     if (!s) return;
@@ -7872,9 +7972,297 @@
     renderManagerSessions();
     renderManagerStats();
   }
-
+  
+  // Open modal to add player to entire recurring group
+  function openAddPlayerToGroupModal(groupIdx) {
+    const groups = buildManagerSessionGroups();
+    const group = groups[groupIdx];
+    if (!group) return;
+    
+    platform.addingPlayerToGroupIdx = groupIdx;
+    platform.addPlayerMode = 'existing';
+    
+    document.getElementById('addPlayerSessionInfo').textContent = 
+      `${group.day}s ${group.time} · ${group.court} (${group.sessions.length} sessions)`;
+    
+    // Get all players - show everyone, we'll skip sessions they're already in
+    const allPlayers = platform.users.filter(u => u.role === 'player' || !u.role);
+    
+    const select = document.getElementById('addPlayerSelect');
+    if (allPlayers.length === 0) {
+      select.innerHTML = '<option value="">-- No registered players --</option>';
+      showAppToast('No registered players found');
+    } else {
+      select.innerHTML = '<option value="">-- Select a player --</option>' + 
+        allPlayers.map(u => `<option value="${u.id}">${u.name} (${u.email})</option>`).join('');
+    }
+    
+    // Reset form
+    document.getElementById('newPlayerName').value = '';
+    document.getElementById('newPlayerEmail').value = '';
+    document.getElementById('newPlayerPhone').value = '';
+    
+    switchAddPlayerMode('existing');
+    document.getElementById('addPlayerModal').classList.add('open');
+  }
+  
+  // Modified confirmAddPlayer to handle both single session and group
+  
+  // Add player to entire recurring group
+  async function confirmAddPlayerToGroup() {
+    const groupIdx = platform.addingPlayerToGroupIdx;
+    const groups = buildManagerSessionGroups();
+    const group = groups[groupIdx];
+    if (!group) return;
+    
+    let userId, userName;
+    
+    if (platform.addPlayerMode === 'existing') {
+      userId = document.getElementById('addPlayerSelect').value;
+      if (!userId) {
+        showAppToast('Please select a player');
+        return;
+      }
+      const user = platform.users.find(u => u.id === userId);
+      if (!user) return;
+      userName = user.name;
+    } else {
+      // Create new user
+      const name = document.getElementById('newPlayerName').value.trim();
+      const email = document.getElementById('newPlayerEmail').value.trim();
+      const phone = document.getElementById('newPlayerPhone').value.trim();
+      
+      if (!name) {
+        showAppToast('Please enter player name');
+        return;
+      }
+      
+      if (phone) {
+        const phoneDigits = phone.replace(/\s/g, '');
+        if (!/^04\d{8}$/.test(phoneDigits)) {
+          showAppToast('Phone must be Australian mobile (04XXXXXXXX)');
+          return;
+        }
+      }
+      
+      if (email && platform.users.find(u => u.email === email)) {
+        showAppToast('User with this email already exists');
+        return;
+      }
+      
+      const { data: newUser, error: userError } = await sb.from('users').insert({
+        name,
+        email: email || null,
+        phone: phone || null,
+        role: 'player',
+        blocked: false,
+        auth_id: null
+      }).select().single();
+      
+      if (userError) {
+        console.error('Error creating user:', userError);
+        showAppToast('Error creating user: ' + userError.message);
+        return;
+      }
+      
+      platform.users.push({
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        phone: newUser.phone,
+        role: 'player',
+        blocked: false
+      });
+      
+      userId = newUser.id;
+      userName = newUser.name;
+    }
+    
+    // Add to all sessions in the group
+    const addedUser = platform.users.find(u => u.id === userId);
+    let successCount = 0;
+    let skippedReasons = {
+      alreadyBooked: 0,
+      full: 0,
+      errors: 0
+    };
+    
+    console.log('Starting bulk add for', userName, 'to', group.sessions.length, 'sessions');
+    
+    for (const s of group.sessions) {
+      console.log('Processing session', s.id, {
+        alreadyBooked: s.bookedUserIds.includes(userId),
+        currentSpots: s.bookedUserIds.length,
+        totalSpots: s.totalSpots,
+        isFull: s.bookedUserIds.length >= s.totalSpots
+      });
+      
+      // Skip if already booked or full
+      if (s.bookedUserIds.includes(userId)) {
+        console.log('Skipped - already booked');
+        skippedReasons.alreadyBooked++;
+        continue;
+      }
+      if (s.bookedUserIds.length >= s.totalSpots) {
+        console.log('Skipped - session full');
+        skippedReasons.full++;
+        continue;
+      }
+      
+      const durationHours = (s.duration || 60) / 60;
+      const correctPrice = Math.round(s.price * durationHours);
+      
+      console.log('Adding booking:', { userId, sessionId: s.id, price: correctPrice });
+      
+      const { data: newBooking, error } = await sb.from('bookings').insert({
+        user_id: userId,
+        session_id: s.id,
+        amount_paid: correctPrice,
+        quantity: 1,
+        discount_percent: 0,
+        status: 'awaiting_payment',
+        paid_at: null
+      }).select().single();
+      
+      if (error) {
+        console.error('Error adding player to session', s.id, error);
+        skippedReasons.errors++;
+        continue;
+      }
+      
+      console.log('Booking created successfully:', newBooking.id);
+      
+      // Update local state
+      s.bookedUserIds.push(userId);
+      if (!s.bookings) s.bookings = [];
+      s.bookings.push({
+        userId: userId,
+        bookedAt: newBooking.booked_at,
+        amountPaid: correctPrice,
+        quantity: 1,
+        discountPercent: 0,
+        status: 'awaiting_payment',
+        paidAt: null,
+        dbId: newBooking.id
+      });
+      
+      successCount++;
+    }
+    
+    console.log('Bulk add complete:', {
+      total: group.sessions.length,
+      added: successCount,
+      skipped: skippedReasons
+    });
+    
+    // Check if no sessions were added
+    if (successCount === 0) {
+      closeAddPlayerModal();
+      platform.addingPlayerToGroupIdx = undefined;
+      
+      let errorMsg = `Could not add ${userName} to any sessions. `;
+      if (skippedReasons.alreadyBooked > 0) {
+        errorMsg += `Already booked in all ${skippedReasons.alreadyBooked} sessions.`;
+      } else if (skippedReasons.full > 0) {
+        errorMsg += `All ${skippedReasons.full} sessions are full.`;
+      } else if (skippedReasons.errors > 0) {
+        errorMsg += `Database errors occurred.`;
+      }
+      
+      showAppToast(errorMsg);
+      renderManagerSessions();
+      return;
+    }
+    
+    // Calculate total amount correctly (price per session × sessions added)
+    const firstSession = group.sessions[0];
+    const durationHours = (firstSession.duration || 60) / 60;
+    const pricePerSession = Math.round(firstSession.price * durationHours);
+    const totalAmount = pricePerSession * successCount;
+    
+    console.log('Bulk add complete:', {
+      player: userName,
+      sessionsAdded: successCount,
+      pricePerSession: pricePerSession,
+      totalAmount: totalAmount
+    });
+    
+    // Ask if should send email (only if player has email and emails enabled)
+    let shouldSendEmail = false;
+    if (addedUser && addedUser.email && platform.emailSystemEnabled) {
+      shouldSendEmail = confirm(`Send booking confirmation email to ${addedUser.name} (${addedUser.email}) for all ${successCount} sessions?\n\nTotal: $${totalAmount}`);
+      console.log('Email prompt result:', shouldSendEmail);
+    } else {
+      console.log('Email not sent:', {
+        hasUser: !!addedUser,
+        hasEmail: !!addedUser?.email,
+        emailsEnabled: platform.emailSystemEnabled
+      });
+    }
+    
+    if (shouldSendEmail) {
+      // Get first session date as starting point
+      const firstSessionDate = formatSessionDate(firstSession.startsAt, firstSession.date);
+      const sessionInfo = `${successCount}-session package starting ${firstSessionDate}`;
+      const reference = `${userName.split(' ')[0].toUpperCase()}-${group.day.slice(0,3).toUpperCase()}-${group.time.replace(/[: ]/g, '')}`;
+      
+      console.log('Sending bulk add email:', {
+        to: addedUser.email,
+        amount: totalAmount,
+        sessions: successCount
+      });
+      
+      sendNotification({
+        type: "booking_added_by_manager",
+        playerName: addedUser.name,
+        playerEmail: addedUser.email,
+        playerPhone: addedUser.phone || '',
+        sessionInfo: sessionInfo,
+        amount: totalAmount,
+        quantity: successCount,
+        reference: reference,
+        payIdPhone: '0456 231 911',
+        payIdName: 'Vishal Singh Lather',
+        venue: group.venue,
+        court: group.court,
+        time: group.time,
+        date: firstSessionDate,
+        sessionType: group.sessionType,
+        level: group.level,
+        awaitingPayment: true
+      });
+    }
+    
+    closeAddPlayerModal();
+    platform.addingPlayerToGroupIdx = undefined;
+    
+    const totalSessions = group.sessions.length;
+    const skippedCount = totalSessions - successCount;
+    let message = `✓ ${userName} added to ${successCount} sessions`;
+    
+    if (skippedCount > 0) {
+      message += ` (${skippedCount} skipped: already booked or full)`;
+    }
+    if (shouldSendEmail) {
+      message += ' (email sent)';
+    }
+    
+    showAppToast(message);
+    renderManagerSessions();
+    renderManagerBookings();
+    renderManagerStats();
+  }
+  
   // Open recurring sessions modal
   function openRecurringModal() {
+    // Clear any editing state
+    platform.editingGroupIdx = undefined;
+    
+    const submitBtn = document.querySelector('#recurringModal .btn-primary');
+    if (submitBtn) {
+      submitBtn.textContent = 'Create Sessions';
+    }
+    
     // Pre-fill with defaults similar to add session
     document.getElementById('rec_venue').value = 'Roketto Badminton';
     document.getElementById('rec_court').value = '';
@@ -7902,7 +8290,95 @@
     document.getElementById('recurringModal').classList.remove('open');
   }
 
+  // Update all sessions in a recurring group
+  async function updateRecurringGroup() {
+    const groups = buildManagerSessionGroups();
+    const group = groups[platform.editingGroupIdx];
+    if (!group) return;
+    
+    // Get updated values from form
+    const venue = document.getElementById('rec_venue').value.trim();
+    const court = document.getElementById('rec_court').value.trim();
+    const time = document.getElementById('rec_time').value.trim();
+    const level = document.getElementById('rec_level').value;
+    const ageRange = document.getElementById('rec_age').value.trim();
+    const price = parseInt(document.getElementById('rec_price').value);
+    const minSpots = parseInt(document.getElementById('rec_minSpots').value);
+    const totalSpots = parseInt(document.getElementById('rec_spots').value);
+    const sessionType = document.getElementById('rec_type').value;
+    const coachName = document.getElementById('rec_coach').value.trim();
+    
+    if (!venue || !court || !time) {
+      showAppToast('Please fill all required fields');
+      return;
+    }
+    
+    if (isNaN(price) || price < 0) {
+      showAppToast('Please enter a valid price');
+      return;
+    }
+    
+    if (isNaN(minSpots) || minSpots < 1 || isNaN(totalSpots) || totalSpots < minSpots) {
+      showAppToast('Please enter valid player counts');
+      return;
+    }
+    
+    // Update all sessions in the group
+    let updateCount = 0;
+    for (const session of group.sessions) {
+      const { error } = await sb.from('sessions').update({
+        venue,
+        court,
+        time,
+        level,
+        age_group: ageRange,
+        price,
+        min_spots: minSpots,
+        total_spots: totalSpots,
+        session_type: sessionType,
+        coach: coachName
+      }).eq('id', session.id);
+      
+      if (error) {
+        console.error('Error updating session:', error);
+        continue;
+      }
+      
+      // Update local state
+      session.venue = venue;
+      session.court = court;
+      session.time = time;
+      session.level = level;
+      session.ageGroup = ageRange;
+      session.price = price;
+      session.minSpots = minSpots;
+      session.totalSpots = totalSpots;
+      session.sessionType = sessionType;
+      session.coach = coachName;
+      
+      updateCount++;
+    }
+    
+    document.getElementById('recurringModal').classList.remove('open');
+    platform.editingGroupIdx = undefined;
+    
+    // Reset button text if button exists
+    const submitBtn = document.querySelector('#recurringModal .btn-primary');
+    if (submitBtn) {
+      submitBtn.textContent = 'Create Sessions';
+    }
+    
+    showAppToast(`✓ Updated ${updateCount} sessions in the series`);
+    renderManagerSessions();
+  }
+  
   async function saveRecurringSessions() {
+    // Check if we're editing an existing group
+    if (platform.editingGroupIdx !== undefined) {
+      await updateRecurringGroup();
+      return;
+    }
+    
     const dateStr = document.getElementById('rec_startDate').value;
     const time = document.getElementById('rec_time').value.trim();
     const weeks = parseInt(document.getElementById('rec_weeks').value);
