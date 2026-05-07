@@ -3630,6 +3630,23 @@
       const { data: bookingsData, error: bErr } = await sb.from('bookings').select('*');
       if (bErr) throw bErr;
 
+      // Load discount codes
+      const { data: discountData, error: dErr } = await sb.from('discount_codes').select('*');
+      if (dErr) {
+        console.warn('Could not load discount codes:', dErr);
+        platform.discountCodes = [];
+      } else {
+        platform.discountCodes = (discountData || []).map(d => ({
+          code: d.code,
+          type: d.discount_type,
+          value: d.discount_value,
+          expiryDate: d.expiry_date,
+          maxUses: d.max_uses,
+          usedCount: d.used_count || 0,
+          id: d.id
+        }));
+      }
+
       // Transform users (db uses joined_at, we use joined)
       platform.users = usersData.map(u => ({
         id: u.id, 
@@ -5689,9 +5706,19 @@
       }
       discountCodeUsed = discount.code;
       
-      // Increment usage count
-      discount.usedCount = (discount.usedCount || 0) + 1;
-      savePlatform();
+      // Increment usage count in database
+      try {
+        const newCount = (discount.usedCount || 0) + 1;
+        const { error } = await sb.from('discount_codes')
+          .update({ used_count: newCount })
+          .eq('code', discount.code);
+        
+        if (!error) {
+          discount.usedCount = newCount;
+        }
+      } catch (err) {
+        console.error('Failed to update discount usage:', err);
+      }
     }
     
     console.log('Booking details:', { qty, pricePerSession, totalBase, bulkDiscount, discountCodeUsed, finalPrice });
@@ -7450,23 +7477,52 @@
       createdBy: platform.currentManager
     };
     
-    // Save to platform
-    platform.discountCodes.push(newCode);
-    savePlatform();
-    
-    // Close modal and refresh
-    closeCreateDiscountModal();
-    renderDiscountCodes();
-    alert(`✅ Discount code "${code}" created successfully!`);
+    // Save to database
+    try {
+      const { data, error } = await sb.from('discount_codes').insert({
+        code: code,
+        discount_type: type,
+        discount_value: value,
+        max_uses: maxUses,
+        expiry_date: expiryDate,
+        description: description,
+        used_count: 0
+      }).select().single();
+      
+      if (error) throw error;
+      
+      // Add to platform with database ID
+      newCode.id = data.id;
+      platform.discountCodes.push(newCode);
+      
+      // Close modal and refresh
+      closeCreateDiscountModal();
+      renderDiscountCodes();
+      alert(`✅ Discount code "${code}" created successfully!`);
+    } catch (err) {
+      console.error('Error creating discount code:', err);
+      alert('Failed to create discount code: ' + err.message);
+    }
   }
   
   // Delete discount code
-  function deleteDiscountCode(code) {
+  async function deleteDiscountCode(code) {
     if (!confirm(`Are you sure you want to delete the discount code "${code}"?`)) return;
     
-    platform.discountCodes = (platform.discountCodes || []).filter(c => c.code !== code);
-    savePlatform();
-    renderDiscountCodes();
+    const discountToDelete = platform.discountCodes.find(c => c.code === code);
+    if (!discountToDelete) return;
+    
+    try {
+      const { error } = await sb.from('discount_codes').delete().eq('code', code);
+      if (error) throw error;
+      
+      platform.discountCodes = platform.discountCodes.filter(c => c.code !== code);
+      renderDiscountCodes();
+      alert(`✅ Discount code "${code}" deleted successfully!`);
+    } catch (err) {
+      console.error('Error deleting discount code:', err);
+      alert('Failed to delete discount code: ' + err.message);
+    }
   }
   
   // Open send discount modal
