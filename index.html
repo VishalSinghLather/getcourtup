@@ -5706,15 +5706,16 @@
       }
       discountCodeUsed = discount.code;
       
-      // Increment usage count in database
+      // Increment usage count in database using secure function
       try {
-        const newCount = (discount.usedCount || 0) + 1;
-        const { error } = await sb.from('discount_codes')
-          .update({ used_count: newCount })
-          .eq('code', discount.code);
+        const { error } = await sb.rpc('increment_discount_usage', {
+          discount_code: discount.code
+        });
         
         if (!error) {
-          discount.usedCount = newCount;
+          discount.usedCount = (discount.usedCount || 0) + 1;
+        } else {
+          console.error('Failed to increment discount usage:', error);
         }
       } catch (err) {
         console.error('Failed to update discount usage:', err);
