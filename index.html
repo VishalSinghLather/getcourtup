@@ -3550,7 +3550,8 @@
     bookingSessionId: null,
     pendingBookId: null,
     cancelingSessionId: null,
-    discountCodes: [], // Loaded from localStorage
+    discountCodes: [], // Loaded from database
+    achievements: [], // User achievements loaded from database
     payId: {
       phone: "0402 004 683",
       name: "Vishal Singh Lather"
@@ -3562,6 +3563,16 @@
     },
   };
   window.platform = platform; // make accessible to renderSessions which runs earlier
+  
+  // Badge definitions
+  const BADGES = {
+    first_timer: { name: 'First Timer', icon: '🎯', sessions: 1 },
+    regular: { name: 'Regular', icon: '🔥', sessions: 5 },
+    warrior: { name: 'Warrior', icon: '💪', sessions: 10 },
+    star_player: { name: 'Star Player', icon: '⭐', sessions: 25 },
+    legend: { name: 'Legend', icon: '👑', sessions: 50 },
+    champion: { name: 'Champion', icon: '🏆', sessions: 100 }
+  };
   
   // Load discount codes from localStorage
   function loadDiscountCodes() {
@@ -3645,6 +3656,15 @@
           usedCount: d.used_count || 0,
           id: d.id
         }));
+      }
+
+      // Load achievements
+      const { data: achievementsData, error: aErr } = await sb.from('user_achievements').select('*');
+      if (aErr) {
+        console.warn('Could not load achievements:', aErr);
+        platform.achievements = [];
+      } else {
+        platform.achievements = achievementsData || [];
       }
 
       // Transform users (db uses joined_at, we use joined)
@@ -3820,12 +3840,22 @@
         const isBlocked = u.status === 'blocked';
         const joinedDate = new Date(u.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
         
+        // Get user's badges
+        const userBadges = platform.achievements.filter(a => a.user_id === u.id);
+        const badgeHTML = userBadges.length > 0
+          ? userBadges.map(achievement => {
+              const badge = BADGES[achievement.achievement_code];
+              return badge ? `<span title="${badge.name}" style="font-size:16px; margin-right:2px;">${badge.icon}</span>` : '';
+            }).join('')
+          : '<span style="color:var(--text-muted); font-size:11px;">—</span>';
+        
         return `<tr>
           <td style="font-weight:600;">${u.name || 'N/A'}</td>
           <td>${u.email}</td>
           <td>${u.phone || 'N/A'}</td>
           <td>${joinedDate}</td>
           <td>${counts.paid}/${counts.total}</td>
+          <td>${badgeHTML}</td>
           <td>
             ${isBlocked 
               ? '<span class="status-badge" style="background:#FCE8E8;color:#E24B4A;">Blocked</span>'
@@ -3843,7 +3873,7 @@
       }).join('');
     } catch (e) {
       console.error('Error loading users:', e);
-      document.getElementById('usersTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px; color:var(--text-muted);">Error loading users</td></tr>';
+      document.getElementById('usersTableBody').innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px; color:var(--text-muted);">Error loading users</td></tr>';
     }
   }
 
@@ -5263,6 +5293,71 @@
       return;
     }
     
+    try {
+      // Calculate user stats
+      const attendedCount = platform.platformSessions.reduce((count, session) => {
+        const userBooking = (session.bookings || []).find(b => 
+          b.userId === platform.currentUser.id && b.status === 'attended'
+        );
+        return count + (userBooking ? 1 : 0);
+      }, 0);
+      
+      // Get user's badges
+      const userBadges = (platform.achievements || []).filter(a => a.user_id === platform.currentUser.id);
+      
+      const badgeHTML = userBadges.length > 0
+        ? userBadges.map(achievement => {
+            const badge = BADGES[achievement.achievement_code];
+            if (!badge) return '';
+            const earnedDate = new Date(achievement.earned_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+            return `<div style="display:inline-flex; align-items:center; gap:6px; background:var(--surface); border:2px solid var(--border); border-radius:12px; padding:8px 12px; margin:4px;">
+              <span style="font-size:24px;">${badge.icon}</span>
+              <div>
+                <div style="font-weight:700; font-size:13px;">${badge.name}</div>
+                <div style="font-size:10px; color:var(--text-muted);">Earned ${earnedDate}</div>
+              </div>
+            </div>`;
+          }).join('')
+        : '<div style="color:var(--text-muted); font-size:13px; padding:8px;">No badges yet - attend sessions to earn achievements!</div>';
+    
+    // Next badge to earn
+    const nextBadge = Object.entries(BADGES).find(([code, badge]) => {
+      return attendedCount < badge.sessions && !userBadges.find(a => a.achievement_code === code);
+    });
+    
+    const nextBadgeHTML = nextBadge 
+      ? `<div style="font-size:12px; color:var(--text-muted); margin-top:8px;">
+          Next: <strong>${nextBadge[1].icon} ${nextBadge[1].name}</strong> (${attendedCount}/${nextBadge[1].sessions} sessions)
+          <div style="background:var(--surface); height:8px; border-radius:4px; margin-top:4px; overflow:hidden;">
+            <div style="background:var(--green); height:100%; width:${(attendedCount / nextBadge[1].sessions) * 100}%; transition:width 0.3s;"></div>
+          </div>
+        </div>`
+      : '';
+    
+    // Stats card
+    const statsCard = `
+      <div style="background:linear-gradient(135deg, var(--green-light) 0%, var(--surface) 100%); border:2px solid var(--green); border-radius:16px; padding:20px; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:16px;">
+          <div>
+            <h3 style="font-family:var(--font-display); font-size:18px; font-weight:700; margin:0 0 4px 0;">Your Progress</h3>
+            <p style="margin:0; font-size:13px; color:var(--text-mid);">Keep attending to unlock more achievements!</p>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:var(--font-display); font-size:32px; font-weight:800; color:var(--green);">${attendedCount}</div>
+            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Sessions Attended</div>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border); padding-top:16px;">
+          <div style="font-weight:600; font-size:13px; margin-bottom:8px; color:var(--text-mid);">🏆 Achievements Earned (${userBadges.length})</div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            ${badgeHTML}
+          </div>
+          ${nextBadgeHTML}
+        </div>
+      </div>
+    `;
+    
+    
     // Debug: Log all bookings for current user
     console.log('=== MY BOOKINGS DEBUG ===');
     mySessions.forEach(s => {
@@ -5294,7 +5389,7 @@
       </div>
     ` : '';
     
-    content.innerHTML = pendingBanner + `<div class="app-sessions-grid">${
+    content.innerHTML = statsCard + pendingBanner + `<div class="app-sessions-grid">${
       mySessions.map(s => {
         const hrs = hoursUntil(s.startsAt);
         const policy = refundPolicy(hrs);
@@ -5357,6 +5452,73 @@
         </div>`;
       }).join("")
     }</div>`;
+    } catch (error) {
+      console.error('Error rendering stats card:', error);
+      // Fallback without stats card
+      content.innerHTML = pendingBanner + `<div class="app-sessions-grid">${
+        mySessions.map(s => {
+          const hrs = hoursUntil(s.startsAt);
+          const policy = refundPolicy(hrs);
+          const myBooking = (s.bookings || []).find(b => b.userId === platform.currentUser.id && b.status !== "cancelled" && b.status !== "removed_by_manager");
+          const awaiting = myBooking && myBooking.status === "awaiting_payment";
+          const qty = myBooking ? (myBooking.quantity || 1) : 1;
+          const ref = buildRef(s, platform.currentUser, qty);
+          const displayPrice = myBooking ? (myBooking.amountPaid || s.price) : s.price;
+          const hasDiscount = myBooking && myBooking.discountPercent > 0;
+          const originalPrice = hasDiscount ? Math.round(displayPrice / (1 - myBooking.discountPercent / 100)) : null;
+          
+          // Session type badge
+          const sessionTypeIcons = { 'social': '🤝', 'competitive': '⚡', 'learning': '📚' };
+          const sessionType = s.sessionType || 'group';
+          const sessionTypeIcon = sessionTypeIcons[sessionType] || '👥';
+          const sessionTypeLabel = sessionType.charAt(0).toUpperCase() + sessionType.slice(1);
+          
+          return `
+          <div class="app-session-card booked">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+              <div>
+                <div style="font-family:var(--font-display); font-size:15px; font-weight:700;">${s.venue}</div>
+                <div style="font-size:12px; color:var(--text-muted);">${formatSessionDate(s.startsAt, s.date)} · ${formatTimeRange(s.time, s.duration || 60)} · ${s.court}</div>
+                <div style="margin-top:4px;">
+                  <span style="display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:2px 8px; font-size:11px; font-weight:600; color:var(--text-mid);">${sessionTypeIcon} ${sessionTypeLabel}</span>
+                  ${qty > 1 ? `<span style="display:inline-block; background:var(--green-light); border:1px solid var(--green); border-radius:6px; padding:2px 8px; font-size:11px; font-weight:600; color:var(--green); margin-left:4px;">📦 ${qty} sessions</span>` : ''}
+                </div>
+              </div>
+              <div>
+                ${hasDiscount ? `<div style="font-size:14px; color:var(--text-muted); text-decoration:line-through; text-align:right;">$${originalPrice}</div>` : ''}
+                <div style="font-family:var(--font-display); font-size:20px; font-weight:800; ${hasDiscount ? 'color:var(--green);' : ''}">$${displayPrice}</div>
+                <div style="font-size:10px; color:var(--text-muted); text-align:right;">${awaiting ? 'to pay' : 'paid'}${hasDiscount ? ` (${myBooking.discountPercent}% off)` : ''}</div>
+              </div>
+            </div>
+            <div style="margin-bottom:10px;">
+              ${awaiting
+                ? '<span class="badge" style="background:#FFF3EC;color:#CC4A10;border-color:#FF6B35;">⚠ Awaiting PayID payment</span>'
+                : '<span class="badge badge-beg">✓ Payment received</span>'}
+            </div>
+            ${awaiting ? `
+            <div style="background:#FFFBEB; border:1px solid #FFE5A3; border-radius:10px; padding:12px; margin-bottom:10px;">
+              <div style="font-size:11px; font-weight:700; color:#8B6F00; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">PayID Payment</div>
+              <div style="font-size:13px; margin-bottom:4px;">PayID: <strong>${platform.payId.phone}</strong></div>
+              <div style="font-size:13px; margin-bottom:4px;">Name: <strong>${platform.payId.name}</strong></div>
+              <div style="font-size:13px; margin-bottom:4px;">Amount: <strong>$${displayPrice}</strong></div>
+              <div style="font-size:13px;">Reference: <strong>${ref}</strong></div>
+              <button class="btn-small ghost" style="width:100%; margin-top:10px; font-size:12px;" onclick="reshowPayId(${s.id})">View full payment details</button>
+            </div>
+            ` : ""}
+            <div style="background:var(--surface); border-radius:10px; padding:10px 12px; margin-bottom:10px;">
+              <div style="font-size:11px; color:var(--text-muted); margin-bottom:3px;">Cancellation policy</div>
+              <div style="font-size:12px; font-weight:600; color:${policy.color};">
+                ${hrs < 0 ? "Session has started" : `Cancel now → ${policy.label}`}
+              </div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:4px; line-height:1.4;">
+                48h+ before → 100% refund · 24–48h → 50% refund · under 24h → no refund
+              </div>
+            </div>
+            <button class="btn-small danger" onclick="cancelBooking(${s.id})" ${hrs < 0 ? 'disabled style="opacity:0.5; cursor:not-allowed; width:100%;"' : 'style="width:100%;"'}>Cancel booking</button>
+          </div>`;
+        }).join("")
+      }</div>`;
+    }
   }
   let bulkBookingQty = 1; // Default to single session
 
@@ -6698,6 +6860,54 @@
     }
   }
 
+  // Check and award badges based on attendance count
+  async function checkAndAwardBadges(userId) {
+    try {
+      // Count total attended sessions for this user
+      const attendedCount = platform.platformSessions.reduce((count, session) => {
+        const userBooking = (session.bookings || []).find(b => 
+          b.userId === userId && b.status === 'attended'
+        );
+        return count + (userBooking ? 1 : 0);
+      }, 0);
+
+      // Get user's current badges
+      const userBadges = platform.achievements.filter(a => a.user_id === userId);
+      const badgeCodes = userBadges.map(b => b.achievement_code);
+
+      // Check each badge milestone
+      const earnedBadges = [];
+      for (const [code, badge] of Object.entries(BADGES)) {
+        if (attendedCount >= badge.sessions && !badgeCodes.includes(code)) {
+          // Award this badge!
+          const { data, error } = await sb.from('user_achievements').insert({
+            user_id: userId,
+            achievement_code: code,
+            achievement_name: badge.name
+          }).select().single();
+
+          if (!error && data) {
+            platform.achievements.push(data);
+            earnedBadges.push(badge);
+          }
+        }
+      }
+
+      // Show notification if badges were earned
+      if (earnedBadges.length > 0) {
+        const user = platform.users.find(u => u.id === userId);
+        const userName = user ? user.name : 'Player';
+        const badgeText = earnedBadges.map(b => `${b.icon} ${b.name}`).join(', ');
+        showAppToast(`🎉 ${userName} earned: ${badgeText}!`, 5000);
+      }
+
+      return earnedBadges;
+    } catch (error) {
+      console.error('Error checking badges:', error);
+      return [];
+    }
+  }
+
   async function markAttendance(sid, uid, attended) {
     const s = platform.platformSessions.find(x => x.id === sid);
     if (!s) return;
@@ -6711,6 +6921,12 @@
     b.attended = attended;
     b.status = newStatus;
     showAppToast(attended ? "✓ Marked as attended" : "Attendance unmarked");
+    
+    // Check and award badges if marking as attended
+    if (attended) {
+      await checkAndAwardBadges(uid);
+    }
+    
     renderManagerBookings();
   }
 
@@ -8692,12 +8908,12 @@
   }
 
   // ------ App toast ------
-  function showAppToast(msg) {
+  function showAppToast(msg, duration = 2800) {
     const t = document.getElementById("toast");
     if (!t) return;
     t.textContent = msg;
     t.classList.add("show");
-    setTimeout(() => t.classList.remove("show"), 2800);
+    setTimeout(() => t.classList.remove("show"), duration);
   }
 
 
