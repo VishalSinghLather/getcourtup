@@ -3763,7 +3763,7 @@
             amount: finalPrice * 100, // Square uses cents
             currency: 'AUD'
           },
-          idempotencyKey: `${platform.currentUser.id}-${platform.bookingSessionId}-${Date.now()}`
+          idempotencyKey: `${platform.currentUser.id}-${platform.bookingSessionId}-${Date.now()}-${Math.random().toString(36).substring(7)}`
         })
       });
       
@@ -9860,9 +9860,6 @@
       
       <!-- Card Payment -->
       <div id="card-container"></div>
-      <div style="font-size:11px; color:var(--text-muted); margin-top:8px; padding:8px 12px; background:var(--bg-secondary); border-radius:6px;">
-        💡 <strong>Postcode:</strong> Add a 0 at the start (e.g., Sydney 2000 → 02000)
-      </div>
       <div id="payment-status-container" style="display:none;"></div>
     </div>
     
