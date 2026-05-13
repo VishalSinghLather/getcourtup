@@ -3629,11 +3629,19 @@
   
   let squarePayments;
   let squareCard;
+  let squareInitialized = false; // Track if Square is already initialized
   
-  // Initialize Square Payments
+  // Initialize Square Payments (only once)
   async function initializeSquare() {
     if (!window.Square) {
       console.error('Square.js failed to load');
+      return;
+    }
+    
+    // If already initialized, just show the form
+    if (squareInitialized && squareCard) {
+      console.log('Square already initialized, reusing existing form');
+      document.getElementById('square-payment-form').style.display = 'block';
       return;
     }
     
@@ -3644,6 +3652,7 @@
       squareCard = await squarePayments.card();
       
       await squareCard.attach('#card-container');
+      squareInitialized = true;
       console.log('Square payment form initialized');
     } catch (e) {
       console.error('Failed to initialize Square:', e);
@@ -6139,9 +6148,14 @@
   }
   function closeBookModal() { 
     document.getElementById("bookModalApp").classList.remove("open"); 
-    // Hide and reset Square payment form
+    // Hide Square payment form but keep it initialized for reuse
     document.getElementById('square-payment-form').style.display = 'none';
     clearPaymentError();
+    
+    // Clear the card input fields
+    if (squareCard) {
+      squareCard.clear();
+    }
   }
 
   function reshowPayId(sid) {
