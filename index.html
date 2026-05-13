@@ -3629,22 +3629,7 @@
   
   let squarePayments;
   let squareCard;
-  let squareApplePay;
-  let squareGooglePay;
-  let squarePaymentRequest;
-  let squareInitialized = false; // Track if Square is already initialized
-  
-  // Update payment amount for Apple Pay and Google Pay
-  function updatePaymentAmount(amount) {
-    if (squarePaymentRequest) {
-      squarePaymentRequest.update({
-        total: {
-          amount: amount.toFixed(2),
-          label: 'GetCourtUp Booking',
-        },
-      });
-    }
-  }
+  let squareInitialized = false;
   
   // Initialize Square Payments (only once)
   async function initializeSquare() {
@@ -3666,62 +3651,6 @@
       // Initialize Card payment
       squareCard = await squarePayments.card();
       await squareCard.attach('#card-container');
-      
-      // Initialize Payment Request for Apple Pay and Google Pay
-      squarePaymentRequest = squarePayments.paymentRequest({
-        countryCode: 'AU',
-        currencyCode: 'AUD',
-        total: {
-          amount: '90.00', // Default amount, will be updated per booking
-          label: 'GetCourtUp Booking',
-        },
-      });
-      
-      // Initialize Apple Pay (if available)
-      try {
-        squareApplePay = await squarePayments.applePay(squarePaymentRequest);
-        await squareApplePay.attach('#apple-pay-container');
-        document.getElementById('apple-pay-container').style.display = 'block';
-        document.getElementById('digital-wallet-divider').style.display = 'block';
-        
-        // Handle Apple Pay tokenization
-        squareApplePay.addEventListener('ontokenization', async (event) => {
-          const { tokenResult } = event.detail;
-          if (tokenResult.status === 'OK') {
-            await processSquarePayment(tokenResult.token);
-          } else {
-            displayPaymentError('Apple Pay failed. Please try card payment.');
-          }
-        });
-        
-        console.log('✅ Apple Pay available');
-      } catch (e) {
-        console.log('Apple Pay not available on this device');
-        document.getElementById('apple-pay-container').style.display = 'none';
-      }
-      
-      // Initialize Google Pay (if available)
-      try {
-        squareGooglePay = await squarePayments.googlePay(squarePaymentRequest);
-        await squareGooglePay.attach('#google-pay-container');
-        document.getElementById('google-pay-container').style.display = 'block';
-        document.getElementById('digital-wallet-divider').style.display = 'block';
-        
-        // Handle Google Pay tokenization
-        squareGooglePay.addEventListener('ontokenization', async (event) => {
-          const { tokenResult } = event.detail;
-          if (tokenResult.status === 'OK') {
-            await processSquarePayment(tokenResult.token);
-          } else {
-            displayPaymentError('Google Pay failed. Please try card payment.');
-          }
-        });
-        
-        console.log('✅ Google Pay available');
-      } catch (e) {
-        console.log('Google Pay not available on this device');
-        document.getElementById('google-pay-container').style.display = 'none';
-      }
       
       squareInitialized = true;
       console.log('Square payment form initialized');
@@ -6194,9 +6123,6 @@
     const durationHours = (s.duration || 60) / 60;
     const totalPrice = Math.round(s.price * durationHours);
     document.getElementById("bookModalPrice").textContent = `$${totalPrice}`;
-    
-    // Update Apple Pay and Google Pay amounts
-    updatePaymentAmount(totalPrice);
     
     // Initialize bulk buttons
     selectBulkQty(1);
@@ -9918,18 +9844,7 @@
     
     <!-- Square Payment Form -->
     <div id="square-payment-form" style="display:none;">
-      <div style="font-size:13px; font-weight:600; margin-bottom:12px; color:var(--text);">💳 Payment Options</div>
-      
-      <!-- Apple Pay Button -->
-      <div id="apple-pay-container" style="display:none; margin-bottom:12px;"></div>
-      
-      <!-- Google Pay Button -->
-      <div id="google-pay-container" style="display:none; margin-bottom:12px;"></div>
-      
-      <!-- Divider if digital wallets available -->
-      <div id="digital-wallet-divider" style="display:none; margin:16px 0;">
-        <div class="payment-option-divider"><span>or pay with card</span></div>
-      </div>
+      <div style="font-size:13px; font-weight:600; margin-bottom:12px; color:var(--text);">💳 Payment Details</div>
       
       <!-- Card Payment -->
       <div id="card-container"></div>
