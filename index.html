@@ -3623,7 +3623,7 @@
   // Square Payment Configuration
   const squareConfig = {
     applicationId: 'sq0idp-MnNN93KiEaXqeq0wsc0YWg', // PRODUCTION
-    locationId: 'LY3H5HWC8J4D8',
+    locationId: 'LCCREJ4B5H3NZ', // PRODUCTION Location (GetCourtUP)
     environment: 'production' // LIVE - Real payments!
   };
   
@@ -9832,6 +9832,9 @@
     <div id="square-payment-form" style="display:none;">
       <div style="font-size:13px; font-weight:600; margin-bottom:12px; color:var(--text);">💳 Payment Details</div>
       <div id="card-container"></div>
+      <div style="font-size:11px; color:var(--text-muted); margin-top:8px; padding:8px 12px; background:var(--bg-secondary); border-radius:6px;">
+        💡 <strong>Postcode:</strong> Add a 0 at the start (e.g., Sydney 2000 → 02000)
+      </div>
       <div id="payment-status-container" style="display:none;"></div>
     </div>
     
