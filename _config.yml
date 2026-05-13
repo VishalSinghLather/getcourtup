@@ -1,0 +1,9 @@
+include:
+  - .well-known
+
+# Disable Jekyll processing for .well-known folder
+defaults:
+  - scope:
+      path: ".well-known"
+    values:
+      layout: none
