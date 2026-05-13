@@ -3783,6 +3783,18 @@
       displayPaymentError(error.message || 'Payment failed. Please try again or use bank transfer.');
       document.getElementById('bookPayButton').disabled = false;
       document.getElementById('bookPayButton').textContent = 'Pay with Card →';
+      
+      // Reset Square form to allow retry with fresh idempotency key
+      if (squareCard) {
+        try {
+          await squareCard.destroy();
+          squareCard = await squarePayments.card();
+          await squareCard.attach('#card-container');
+          console.log('Square form reset for retry');
+        } catch (e) {
+          console.error('Failed to reset Square form:', e);
+        }
+      }
     }
   }
   
