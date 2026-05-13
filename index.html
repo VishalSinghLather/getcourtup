@@ -3793,9 +3793,8 @@
         discount_percent: Math.round(bulkDiscount * 100),
         discount_code: discountCodeUsed,
         status: 'paid', // PAID status since card was charged
-        paid_at: new Date().toISOString(),
-        payment_method: paymentMethod,
-        payment_reference: paymentToken
+        paid_at: new Date().toISOString()
+        // Payment method tracking removed - use existing schema
       }).select().single();
 
       if (error) {
@@ -3833,7 +3832,7 @@
         : `${formatSessionDate(s.startsAt, s.date)} ${s.time} · ${s.court}`;
       
       sendNotification({
-        type: "booking_confirmed",
+        type: "new_booking",
         playerName: platform.currentUser.name,
         playerEmail: platform.currentUser.email,
         playerPhone: platform.currentUser.phone,
@@ -3841,7 +3840,9 @@
         amount: finalPrice,
         quantity: qty,
         discount: Math.round(bulkDiscount * 100),
-        paymentMethod: 'Credit Card'
+        reference: `CARD-${results[0].booking.id}`,
+        payIdPhone: platform.payId.phone,
+        payIdName: platform.payId.name
       });
 
       closeBookModal();
