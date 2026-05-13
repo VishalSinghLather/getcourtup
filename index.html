@@ -3844,6 +3844,13 @@
 
       if (error) {
         console.error(`BOOKING ERROR for session ${session.id}:`, error);
+        console.error('Booking data being inserted:', {
+          user_id: platform.currentUser.id,
+          session_id: session.id,
+          amount_paid: discountedPricePerSession,
+          discount_code: discountCodeUsed,
+          discount_code_length: discountCodeUsed ? discountCodeUsed.length : 0
+        });
         throw error;
       }
       
@@ -3871,23 +3878,28 @@
         });
       });
 
-      // Send confirmation email for card payment (no PayID instructions needed)
+      // Send confirmation notification for card payment (already paid)
       const sessionInfo = qty > 1 
         ? `${qty}-session package: ${sessionsToBook.map(s => formatSessionDate(s.startsAt, s.date)).join(', ')}`
         : `${formatSessionDate(s.startsAt, s.date)} ${s.time} · ${s.court}`;
       
-      // Send email with payment_complete type (you'll need to update your Edge Function)
-      // For now, we'll just log it instead of sending PayID instructions
-      console.log('Card payment confirmed:', {
+      sendNotification({
+        type: "payment_confirmed", // Card payment already processed
         playerName: platform.currentUser.name,
         playerEmail: platform.currentUser.email,
+        playerPhone: platform.currentUser.phone,
         sessionInfo: sessionInfo,
+        venue: s.venue,
+        court: s.court,
+        date: formatSessionDate(s.startsAt, s.date),
+        time: s.time,
+        sessionType: s.session_type,
+        level: s.level,
         amount: finalPrice,
-        paymentMethod: 'Card'
+        quantity: qty
       });
       
-      // TODO: Add 'payment_complete' email type to your Supabase Edge Function
-      // that sends a simple confirmation without PayID payment instructions
+      console.log('Card payment confirmed and email sent');
 
       closeBookModal();
       
