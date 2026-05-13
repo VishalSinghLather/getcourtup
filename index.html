@@ -2224,8 +2224,8 @@
 
 </style>
 
-<!-- Square Web Payments SDK -->
-<script type="text/javascript" src="https://sandbox.web.squarecdn.com/v1/square.js"></script>
+<!-- Square Web Payments SDK - PRODUCTION -->
+<script type="text/javascript" src="https://web.squarecdn.com/v1/square.js"></script>
 
 </head>
 <body>
@@ -3622,9 +3622,9 @@
   
   // Square Payment Configuration
   const squareConfig = {
-    applicationId: 'sandbox-sq0idb-ziddBsd2wyHQSo8UTvj0Aw',
-    locationId: 'LY3H5HWC8J4D8', // Your Square Location ID
-    environment: 'sandbox' // Change to 'production' when going live
+    applicationId: 'sq0idp-MnNN93KiEaXqeq0wsc0YWg', // PRODUCTION
+    locationId: 'LY3H5HWC8J4D8',
+    environment: 'production' // LIVE - Real payments!
   };
   
   let squarePayments;
@@ -3730,15 +3730,48 @@
       discountCodeUsed = discount.code;
     }
     
-    // For now, we'll simulate the payment processing
-    // In production, you'd send this to your backend which calls Square API
-    console.log('Processing payment:', { token, amount: finalPrice });
+    // IMPORTANT: For production, you should send this to your backend
+    // Backend should call Square Payments API with your Access Token
+    // NEVER expose Access Token in frontend code!
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Process booking with payment confirmed
-    await confirmAppBookingWithPayment(finalPrice, discountCodeUsed, bulkDiscount, 'square_card', token);
+    // For now, we'll call a Supabase Edge Function to process payment
+    try {
+      const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaG5rZ3plbGxxdHd6emlvYWliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMDQ1MzIsImV4cCI6MjA5MjU4MDUzMn0.ZzVopDQuWy4qSE4KOiL7rZStCGh5f7ssxwFmakbitrQ";
+      
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/process-square-payment`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": ANON_KEY,
+          "Authorization": `Bearer ${ANON_KEY}`
+        },
+        body: JSON.stringify({
+          sourceId: token,
+          amountMoney: {
+            amount: finalPrice * 100, // Square uses cents
+            currency: 'AUD'
+          },
+          idempotencyKey: `${platform.currentUser.id}-${platform.bookingSessionId}-${Date.now()}`
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Payment failed');
+      }
+      
+      const paymentResult = await response.json();
+      console.log('Payment successful:', paymentResult);
+      
+      // Payment succeeded - create booking
+      await confirmAppBookingWithPayment(finalPrice, discountCodeUsed, bulkDiscount, 'square_card', token);
+      
+    } catch (error) {
+      console.error('Payment processing error:', error);
+      displayPaymentError(error.message || 'Payment failed. Please try again or use bank transfer.');
+      document.getElementById('bookPayButton').disabled = false;
+      document.getElementById('bookPayButton').textContent = 'Pay with Card →';
+    }
   }
   
   // Modified booking confirmation for Square payments
