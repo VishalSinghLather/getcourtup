@@ -3639,9 +3639,14 @@
     
     try {
       squarePayments = window.Square.payments(squareConfig.applicationId, squareConfig.locationId);
-      squareCard = await squarePayments.card();
+      
+      // Configure card with Sydney postal code pre-filled
+      squareCard = await squarePayments.card({
+        postalCode: '2000' // Sydney CBD default - users can change if needed
+      });
+      
       await squareCard.attach('#card-container');
-      console.log('Square payment form initialized');
+      console.log('Square payment form initialized with Sydney postal code');
     } catch (e) {
       console.error('Failed to initialize Square:', e);
       displayPaymentError('Failed to load payment form. Please try again or use bank transfer.');
