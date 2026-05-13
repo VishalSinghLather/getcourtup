@@ -3629,6 +3629,8 @@
   
   let squarePayments;
   let squareCard;
+  let squareApplePay;
+  let squareGooglePay;
   let squareInitialized = false; // Track if Square is already initialized
   
   // Initialize Square Payments (only once)
@@ -3648,10 +3650,65 @@
     try {
       squarePayments = window.Square.payments(squareConfig.applicationId, squareConfig.locationId);
       
-      // Let Square handle postal code validation for Australian location
+      // Initialize Card payment
       squareCard = await squarePayments.card();
-      
       await squareCard.attach('#card-container');
+      
+      // Initialize Apple Pay (if available)
+      const paymentRequest = squarePayments.paymentRequest({
+        countryCode: 'AU',
+        currencyCode: 'AUD',
+        total: {
+          amount: '1.00', // Will be updated dynamically
+          label: 'GetCourtUp',
+        },
+      });
+      
+      try {
+        squareApplePay = await squarePayments.applePay(paymentRequest);
+        await squareApplePay.attach('#apple-pay-container');
+        document.getElementById('apple-pay-container').style.display = 'block';
+        document.getElementById('digital-wallet-divider').style.display = 'block';
+        
+        // Handle Apple Pay tokenization
+        squareApplePay.addEventListener('ontokenization', async (event) => {
+          const { tokenResult } = event.detail;
+          if (tokenResult.status === 'OK') {
+            await processSquarePayment(tokenResult.token);
+          } else {
+            displayPaymentError('Apple Pay failed. Please try another method.');
+          }
+        });
+        
+        console.log('Apple Pay initialized');
+      } catch (e) {
+        console.log('Apple Pay not available:', e.message);
+        document.getElementById('apple-pay-container').style.display = 'none';
+      }
+      
+      // Initialize Google Pay (if available)
+      try {
+        squareGooglePay = await squarePayments.googlePay(paymentRequest);
+        await squareGooglePay.attach('#google-pay-container');
+        document.getElementById('google-pay-container').style.display = 'block';
+        document.getElementById('digital-wallet-divider').style.display = 'block';
+        
+        // Handle Google Pay tokenization
+        squareGooglePay.addEventListener('ontokenization', async (event) => {
+          const { tokenResult } = event.detail;
+          if (tokenResult.status === 'OK') {
+            await processSquarePayment(tokenResult.token);
+          } else {
+            displayPaymentError('Google Pay failed. Please try another method.');
+          }
+        });
+        
+        console.log('Google Pay initialized');
+      } catch (e) {
+        console.log('Google Pay not available:', e.message);
+        document.getElementById('google-pay-container').style.display = 'none';
+      }
+      
       squareInitialized = true;
       console.log('Square payment form initialized');
     } catch (e) {
@@ -9844,7 +9901,20 @@
     
     <!-- Square Payment Form -->
     <div id="square-payment-form" style="display:none;">
-      <div style="font-size:13px; font-weight:600; margin-bottom:12px; color:var(--text);">💳 Payment Details</div>
+      <div style="font-size:13px; font-weight:600; margin-bottom:12px; color:var(--text);">💳 Payment Options</div>
+      
+      <!-- Apple Pay Button -->
+      <div id="apple-pay-container" style="display:none; margin-bottom:12px;"></div>
+      
+      <!-- Google Pay Button -->
+      <div id="google-pay-container" style="display:none; margin-bottom:12px;"></div>
+      
+      <!-- Divider if digital wallets available -->
+      <div id="digital-wallet-divider" style="display:none; margin:16px 0;">
+        <div class="payment-option-divider"><span>or pay with card</span></div>
+      </div>
+      
+      <!-- Card Payment -->
       <div id="card-container"></div>
       <div style="font-size:11px; color:var(--text-muted); margin-top:8px; padding:8px 12px; background:var(--bg-secondary); border-radius:6px;">
         💡 <strong>Postcode:</strong> Add a 0 at the start (e.g., Sydney 2000 → 02000)
