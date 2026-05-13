@@ -3631,7 +3631,20 @@
   let squareCard;
   let squareApplePay;
   let squareGooglePay;
+  let squarePaymentRequest;
   let squareInitialized = false; // Track if Square is already initialized
+  
+  // Update payment amount for Apple Pay and Google Pay
+  function updatePaymentAmount(amount) {
+    if (squarePaymentRequest) {
+      squarePaymentRequest.update({
+        total: {
+          amount: amount.toFixed(2),
+          label: 'GetCourtUp Booking',
+        },
+      });
+    }
+  }
   
   // Initialize Square Payments (only once)
   async function initializeSquare() {
@@ -3654,18 +3667,19 @@
       squareCard = await squarePayments.card();
       await squareCard.attach('#card-container');
       
-      // Initialize Apple Pay (if available)
-      const paymentRequest = squarePayments.paymentRequest({
+      // Initialize Payment Request for Apple Pay and Google Pay
+      squarePaymentRequest = squarePayments.paymentRequest({
         countryCode: 'AU',
         currencyCode: 'AUD',
         total: {
-          amount: '1.00', // Will be updated dynamically
-          label: 'GetCourtUp',
+          amount: '90.00', // Default amount, will be updated per booking
+          label: 'GetCourtUp Booking',
         },
       });
       
+      // Initialize Apple Pay (if available)
       try {
-        squareApplePay = await squarePayments.applePay(paymentRequest);
+        squareApplePay = await squarePayments.applePay(squarePaymentRequest);
         await squareApplePay.attach('#apple-pay-container');
         document.getElementById('apple-pay-container').style.display = 'block';
         document.getElementById('digital-wallet-divider').style.display = 'block';
@@ -3676,19 +3690,19 @@
           if (tokenResult.status === 'OK') {
             await processSquarePayment(tokenResult.token);
           } else {
-            displayPaymentError('Apple Pay failed. Please try another method.');
+            displayPaymentError('Apple Pay failed. Please try card payment.');
           }
         });
         
-        console.log('Apple Pay initialized');
+        console.log('✅ Apple Pay available');
       } catch (e) {
-        console.log('Apple Pay not available:', e.message);
+        console.log('Apple Pay not available on this device');
         document.getElementById('apple-pay-container').style.display = 'none';
       }
       
       // Initialize Google Pay (if available)
       try {
-        squareGooglePay = await squarePayments.googlePay(paymentRequest);
+        squareGooglePay = await squarePayments.googlePay(squarePaymentRequest);
         await squareGooglePay.attach('#google-pay-container');
         document.getElementById('google-pay-container').style.display = 'block';
         document.getElementById('digital-wallet-divider').style.display = 'block';
@@ -3699,13 +3713,13 @@
           if (tokenResult.status === 'OK') {
             await processSquarePayment(tokenResult.token);
           } else {
-            displayPaymentError('Google Pay failed. Please try another method.');
+            displayPaymentError('Google Pay failed. Please try card payment.');
           }
         });
         
-        console.log('Google Pay initialized');
+        console.log('✅ Google Pay available');
       } catch (e) {
-        console.log('Google Pay not available:', e.message);
+        console.log('Google Pay not available on this device');
         document.getElementById('google-pay-container').style.display = 'none';
       }
       
@@ -6180,6 +6194,9 @@
     const durationHours = (s.duration || 60) / 60;
     const totalPrice = Math.round(s.price * durationHours);
     document.getElementById("bookModalPrice").textContent = `$${totalPrice}`;
+    
+    // Update Apple Pay and Google Pay amounts
+    updatePaymentAmount(totalPrice);
     
     // Initialize bulk buttons
     selectBulkQty(1);
