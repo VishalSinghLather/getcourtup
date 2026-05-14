@@ -7009,6 +7009,7 @@
                 </div>
                 <div style="display:flex; gap:6px;">
                   <button class="btn-small green" onclick="event.stopPropagation(); openAddPlayerToGroupModal(${idx})" style="padding:6px 10px; font-size:11px;">+ Add to All</button>
+                  <button class="btn-small" onclick="event.stopPropagation(); extendSeries('${group.venue}', '${group.court}', '${group.day}', '${group.time}', '${group.sessionType}', '${group.level}', ${group.price})" style="padding:6px 10px; font-size:11px; background:var(--green-light); color:var(--green); border:1px solid var(--green);">📅 Extend</button>
                   <button class="btn-small ghost" onclick="event.stopPropagation(); editGroupSeries(${idx})" style="padding:6px 10px; font-size:11px;">Edit All</button>
                   <button class="btn-small danger" onclick="event.stopPropagation(); deleteGroupSeries(${idx})" style="padding:6px 10px; font-size:11px;">Delete All</button>
                 </div>
@@ -7070,6 +7071,129 @@
     }
     
     document.getElementById('recurringModal').classList.add('open');
+  };
+  
+  // Extend existing recurring series with more weeks
+  window.extendSeries = async function(venue, court, day, time, sessionType, level, price) {
+    // Find all sessions matching this exact group
+    const groupSessions = platform.platformSessions.filter(s => {
+      const sessionDay = new Date(s.startsAt).toLocaleDateString('en-US', { weekday: 'long' });
+      return s.venue === venue && 
+             s.court === court && 
+             sessionDay === day && 
+             s.time === time && 
+             s.sessionType === sessionType && 
+             s.level === level && 
+             s.price === price;
+    });
+    
+    if (groupSessions.length === 0) {
+      alert('No sessions found for this group');
+      return;
+    }
+    
+    // Sort all sessions by date
+    const sessions = groupSessions.sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
+    
+    // Split into past and upcoming
+    const now = new Date();
+    const upcomingSessions = sessions.filter(s => new Date(s.startsAt) >= now);
+    const pastSessions = sessions.filter(s => new Date(s.startsAt) < now);
+    
+    // Find the last session (upcoming or past)
+    const lastSession = sessions[sessions.length - 1];
+    const lastDate = new Date(lastSession.startsAt);
+    
+    // Build a better prompt message
+    let promptMessage = `How many more weeks to add to this series?\n\n`;
+    promptMessage += `📊 Series Info:\n`;
+    promptMessage += `• Total sessions: ${sessions.length}\n`;
+    if (pastSessions.length > 0) {
+      promptMessage += `• Past sessions: ${pastSessions.length}\n`;
+    }
+    if (upcomingSessions.length > 0) {
+      promptMessage += `• Upcoming sessions: ${upcomingSessions.length}\n`;
+      promptMessage += `• Next session: ${new Date(upcomingSessions[0].startsAt).toLocaleDateString('en-AU')}\n`;
+    }
+    promptMessage += `• Last session: ${lastDate.toLocaleDateString('en-AU')}\n\n`;
+    promptMessage += `New sessions will start from: ${new Date(lastDate.getTime() + 7*24*60*60*1000).toLocaleDateString('en-AU')}`;
+    
+    // Ask how many more weeks
+    const weeksToAdd = prompt(promptMessage);
+    
+    if (!weeksToAdd || isNaN(weeksToAdd) || weeksToAdd < 1) {
+      return;
+    }
+    
+    const weeks = parseInt(weeksToAdd);
+    
+    if (!confirm(`Add ${weeks} more session${weeks > 1 ? 's' : ''} to this series?`)) {
+      return;
+    }
+    
+    // Create new sessions starting from next week after last session
+    const newSessions = [];
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    for (let i = 1; i <= weeks; i++) {
+      const newDate = new Date(lastDate);
+      newDate.setDate(newDate.getDate() + (7 * i)); // Add i weeks
+      
+      const dayName = days[newDate.getDay()];
+      
+      // Parse time (e.g., "9:00 AM" or "14:30")
+      const timeParts = lastSession.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+      let hours = parseInt(timeParts[1]);
+      const minutes = timeParts[2];
+      
+      // Convert to 24-hour format if needed
+      if (timeParts[3]) {
+        const isPM = timeParts[3].toUpperCase() === 'PM';
+        if (isPM && hours !== 12) hours += 12;
+        if (!isPM && hours === 12) hours = 0;
+      }
+      
+      // Create ISO timestamp
+      newDate.setHours(hours, parseInt(minutes), 0, 0);
+      const startsAt = newDate.toISOString();
+      
+      newSessions.push({
+        venue: lastSession.venue,
+        court: lastSession.court,
+        session_date: dayName,
+        session_time: lastSession.time,
+        starts_at: startsAt,
+        duration: lastSession.duration || 60,
+        level: lastSession.level,
+        price: lastSession.price,
+        min_spots: lastSession.minSpots || 2,
+        total_spots: lastSession.totalSpots,
+        session_type: lastSession.sessionType,
+        coach: lastSession.coach
+      });
+    }
+    
+    // Insert into database
+    try {
+      console.log('=== EXTENDING SERIES ===');
+      console.log('Last session data:', lastSession);
+      console.log('New sessions to create:', newSessions);
+      
+      const { data, error } = await sb.from('sessions').insert(newSessions).select();
+      
+      if (error) throw error;
+      
+      console.log('Created sessions:', data);
+      
+      // Success! Tell user to refresh
+      alert(`✅ Successfully added ${weeks} new session${weeks > 1 ? 's' : ''} to the series!\n\nThe page will now refresh to show the new sessions.`);
+      
+      // Hard reload the page
+      window.location.reload(true);
+    } catch (e) {
+      console.error('Extend error:', e);
+      alert('Failed to extend series: ' + e.message);
+    }
   };
   
   // Delete entire series
@@ -9164,7 +9288,6 @@
         court,
         time,
         level,
-        age_group: ageRange,
         price,
         min_spots: minSpots,
         total_spots: totalSpots,
