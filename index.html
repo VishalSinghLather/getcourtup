@@ -6622,6 +6622,7 @@
     if (tab === "bookings") renderManagerBookings();
     if (tab === "users") renderManagerUsers();
     if (tab === "analytics") renderAnalytics();
+    if (tab === "emailblast") renderEmailBlast();
     if (tab === "discounts") {
       renderDiscountCodes();
       // Initialize email toggle state
@@ -7616,6 +7617,162 @@
     renderManagerBookings();
     renderManagerStats();
   }
+  // ============ EMAIL BLAST ============
+  let blastAudience = 'all';
+  let blastRecipients = [];
+  let blastImageBase64 = null;
+  let blastImageMime = null;
+  let blastImageFileName = null;
+  let blastDocBase64 = null;
+  let blastDocMime = null;
+  let blastDocFileName = null;
+
+  function handleBlastImage(input) {
+    var file = input.files[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) { alert('Image is too large. Please use an image under 3MB.'); input.value = ''; return; }
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      blastImageBase64 = e.target.result.split(',')[1];
+      blastImageMime = file.type;
+      blastImageFileName = file.name;
+      document.getElementById('blastImageName').textContent = file.name;
+      var preview = document.getElementById('blastImagePreview');
+      var thumb = document.getElementById('blastImageThumb');
+      thumb.src = e.target.result;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearBlastImage() {
+    blastImageBase64 = null; blastImageMime = null; blastImageFileName = null;
+    document.getElementById('blastImageFile').value = '';
+    document.getElementById('blastImageName').textContent = 'Choose image (JPG, PNG, SVG)';
+    document.getElementById('blastImagePreview').style.display = 'none';
+  }
+
+  function handleBlastDoc(input) {
+    var file = input.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert('File is too large. Please use a file under 5MB.'); input.value = ''; return; }
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      blastDocBase64 = e.target.result.split(',')[1];
+      blastDocMime = file.type;
+      blastDocFileName = file.name;
+      document.getElementById('blastDocName').textContent = file.name;
+      var info = document.getElementById('blastDocInfo');
+      document.getElementById('blastDocNameTag').textContent = '📎 ' + file.name;
+      info.style.display = 'flex';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearBlastDoc() {
+    blastDocBase64 = null; blastDocMime = null; blastDocFileName = null;
+    document.getElementById('blastDocFile').value = '';
+    document.getElementById('blastDocName').textContent = 'Choose file (PDF, DOC, DOCX)';
+    document.getElementById('blastDocInfo').style.display = 'none';
+  }
+
+  function selectBlastAudience(level, btn) {
+    blastAudience = level;
+    document.querySelectorAll('#blastAudienceButtons .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadBlastRecipients();
+  }
+
+  function renderEmailBlast() {
+    loadBlastRecipients();
+  }
+
+  function loadBlastRecipients() {
+    const countEl = document.getElementById('blastRecipientCount');
+    if (!countEl) return;
+    let all = (platform.users || []).filter(function(u) { return u.role !== 'manager' && u.email && !u.blocked; });
+    if (blastAudience !== 'all') all = all.filter(function(u) { return u.skill_level === blastAudience; });
+    blastRecipients = all;
+    countEl.textContent = blastRecipients.length + ' player' + (blastRecipients.length !== 1 ? 's' : '') + ' will receive this email';
+    countEl.style.color = blastRecipients.length > 0 ? 'var(--green-dark)' : 'var(--text-muted)';
+    var btn = document.getElementById('blastSendBtn');
+    if (btn) btn.textContent = 'Send to ' + blastRecipients.length + ' player' + (blastRecipients.length !== 1 ? 's' : '') + ' →';
+  }
+
+  async function sendEmailBlast() {
+    const subject = (document.getElementById('blastSubject').value || '').trim();
+    const message = (document.getElementById('blastMessage').value || '').trim();
+    const statusEl = document.getElementById('blastStatus');
+    const logEl = document.getElementById('blastLog');
+    const btn = document.getElementById('blastSendBtn');
+
+    if (!subject) { statusEl.textContent = '⚠️ Please enter a subject line.'; statusEl.style.color = '#e53'; return; }
+    if (!message) { statusEl.textContent = '⚠️ Please enter a message.'; statusEl.style.color = '#e53'; return; }
+    if (blastRecipients.length === 0) { statusEl.textContent = '⚠️ No recipients found.'; statusEl.style.color = '#e53'; return; }
+
+    const confirmed = confirm('Send this email to ' + blastRecipients.length + ' player' + (blastRecipients.length !== 1 ? 's' : '') + '?\n\nSubject: ' + subject);
+    if (!confirmed) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    statusEl.textContent = '';
+    logEl.style.display = 'block';
+    logEl.innerHTML = '';
+
+    let sent = 0, failed = 0;
+
+    for (let i = 0; i < blastRecipients.length; i++) {
+      const user = blastRecipients[i];
+      const firstName = (user.name || 'there').split(' ')[0];
+      const personalised = message.replace(/\[Player Name\]/g, firstName);
+
+      logEl.innerHTML += '<span style="color:#888;">[' + (i+1) + '/' + blastRecipients.length + ']</span> Sending to ' + user.email + '... ';
+
+      try {
+        const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaG5rZ3plbGxxdHd6emlvYWliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMDQ1MzIsImV4cCI6MjA5MjU4MDUzMn0.ZzVopDQuWy4qSE4KOiL7rZStCGh5f7ssxwFmakbitrQ";
+        const res = await fetch(SUPABASE_URL + '/functions/v1/email-blast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY },
+          body: JSON.stringify({
+            playerName: user.name || 'Player',
+            playerEmail: user.email,
+            subject: subject,
+            message: personalised,
+            imageBase64: blastImageBase64 || null,
+            imageMime: blastImageMime || null,
+            imageFileName: blastImageFileName || null,
+            docBase64: blastDocBase64 || null,
+            docMime: blastDocMime || null,
+            docFileName: blastDocFileName || null
+          })
+        });
+        const result = await res.json();
+        if (res.ok && !result.error) {
+          sent++;
+          logEl.innerHTML += '<span style="color:var(--green-dark);">✓ Sent</span><br>';
+        } else {
+          failed++;
+          logEl.innerHTML += '<span style="color:#e53;">✗ Failed</span><br>';
+          console.warn('Blast email failed for', user.email, result);
+        }
+      } catch (e) {
+        failed++;
+        logEl.innerHTML += '<span style="color:#e53;">✗ Error</span><br>';
+        console.warn('Blast email error for', user.email, e);
+      }
+      logEl.scrollTop = logEl.scrollHeight;
+      // Small delay to avoid hammering the edge function
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Send to ' + blastRecipients.length + ' players →';
+    statusEl.style.color = failed === 0 ? 'var(--green-dark)' : '#e53';
+    statusEl.textContent = '✅ Done — ' + sent + ' sent' + (failed > 0 ? ', ' + failed + ' failed' : '');
+    logEl.innerHTML += '<br><strong>Finished: ' + sent + ' sent, ' + failed + ' failed.</strong>';
+  }
+  // ============ END EMAIL BLAST ============
+
   function renderManagerUsers() {
     const container = document.getElementById("managerUsersTable");
     if (platform.users.length === 0) {
@@ -10033,6 +10190,7 @@
       <button class="app-tab" onclick="managerTab('analytics', this)">Analytics</button>
       <button class="app-tab" onclick="managerTab('discounts', this)">🎟️ Discount codes</button>
       <button class="app-tab" onclick="managerTab('users', this)">Registered users</button>
+      <button class="app-tab" onclick="managerTab('emailblast', this)">📣 Email blast</button>
     </div>
     <div class="app-tab-content active" id="mtab-sessions">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -10124,6 +10282,80 @@
     <div class="app-tab-content" id="mtab-users">
       <h3 style="font-family:var(--font-display); font-size:18px; font-weight:700; margin-bottom:20px;">Registered players</h3>
       <div id="managerUsersTable"></div>
+    </div>
+
+    <!-- Email Blast Tab -->
+    <div class="app-tab-content" id="mtab-emailblast">
+      <h3 style="font-family:var(--font-display); font-size:18px; font-weight:700; margin-bottom:6px;">📣 Email Blast</h3>
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:24px;">Send an announcement to your players. Emails are sent individually so each person gets a personalised message.</p>
+
+      <!-- Audience selector -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:12px; font-weight:700; color:var(--text-mid); letter-spacing:1px; margin-bottom:10px;">AUDIENCE</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;" id="blastAudienceButtons">
+          <button class="filter-btn active" onclick="selectBlastAudience('all', this)">All players</button>
+          <button class="filter-btn" onclick="selectBlastAudience('Beginner', this)">Beginners only</button>
+          <button class="filter-btn" onclick="selectBlastAudience('Intermediate', this)">Intermediate only</button>
+          <button class="filter-btn" onclick="selectBlastAudience('Advanced', this)">Advanced only</button>
+        </div>
+        <div id="blastRecipientCount" style="font-size:12px; color:var(--text-muted); margin-top:8px;"></div>
+      </div>
+
+      <!-- Subject -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px; font-weight:700; color:var(--text-mid); letter-spacing:1px; margin-bottom:8px;">SUBJECT LINE</div>
+        <input type="text" id="blastSubject" placeholder="e.g. New session this Saturday — join us!" style="width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:10px; font-size:14px; font-family:var(--font-body); box-sizing:border-box; outline:none; transition:border 0.2s;" onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border)'">
+      </div>
+
+      <!-- Message -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px; font-weight:700; color:var(--text-mid); letter-spacing:1px; margin-bottom:8px;">MESSAGE</div>
+        <textarea id="blastMessage" rows="7" placeholder="Hi [Player Name],&#10;&#10;We have an exciting new session coming up — Saturday 20 June, 12:00 PM–2:00 PM at Roketto Badminton.&#10;&#10;Perfect for beginners, just $20 per person. Book your spot at getcourtup.com.au&#10;&#10;See you on court! 🏸&#10;— Vishal" style="width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:10px; font-size:14px; font-family:var(--font-body); box-sizing:border-box; resize:vertical; outline:none; transition:border 0.2s; line-height:1.6;" onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Tip: use <strong>[Player Name]</strong> — it will be replaced with each player's first name automatically.</div>
+      </div>
+
+      <!-- Image upload -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px; font-weight:700; color:var(--text-mid); letter-spacing:1px; margin-bottom:8px;">IMAGE <span style="font-weight:400; color:var(--text-muted);">(optional — shown in email body)</span></div>
+        <label id="blastImageLabel" style="display:flex; align-items:center; gap:12px; padding:12px 16px; border:1.5px dashed var(--border); border-radius:10px; cursor:pointer; transition:border 0.2s;" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+          <span style="font-size:20px;">🖼️</span>
+          <div>
+            <div id="blastImageName" style="font-size:13px; font-weight:600; color:var(--black);">Choose image (JPG, PNG, SVG)</div>
+            <div style="font-size:11px; color:var(--text-muted);">Max 2MB recommended</div>
+          </div>
+          <input type="file" id="blastImageFile" accept="image/*" style="display:none;" onchange="handleBlastImage(this)">
+        </label>
+        <div id="blastImagePreview" style="display:none; margin-top:8px; position:relative; display:none;">
+          <img id="blastImageThumb" style="max-height:80px; border-radius:8px; border:1px solid var(--border);">
+          <button onclick="clearBlastImage()" style="position:absolute; top:-6px; left:-6px; background:#e53; color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:11px; cursor:pointer; line-height:20px; text-align:center; padding:0;">✕</button>
+        </div>
+      </div>
+
+      <!-- Document upload -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:12px; font-weight:700; color:var(--text-mid); letter-spacing:1px; margin-bottom:8px;">ATTACHMENT <span style="font-weight:400; color:var(--text-muted);">(optional — PDF or doc)</span></div>
+        <label id="blastDocLabel" style="display:flex; align-items:center; gap:12px; padding:12px 16px; border:1.5px dashed var(--border); border-radius:10px; cursor:pointer; transition:border 0.2s;" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+          <span style="font-size:20px;">📎</span>
+          <div>
+            <div id="blastDocName" style="font-size:13px; font-weight:600; color:var(--black);">Choose file (PDF, DOC, DOCX)</div>
+            <div style="font-size:11px; color:var(--text-muted);">Sent as email attachment</div>
+          </div>
+          <input type="file" id="blastDocFile" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" onchange="handleBlastDoc(this)">
+        </label>
+        <div id="blastDocInfo" style="display:none; margin-top:8px; background:var(--green-light); border-radius:8px; padding:8px 12px; font-size:12px; color:var(--green-dark); display:none; align-items:center; justify-content:space-between;">
+          <span id="blastDocNameTag"></span>
+          <button onclick="clearBlastDoc()" style="background:none; border:none; color:#e53; cursor:pointer; font-size:13px; font-weight:700;">✕</button>
+        </div>
+      </div>
+
+      <!-- Send button + status -->
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+        <button onclick="sendEmailBlast()" id="blastSendBtn" style="background:var(--green); color:#0D0D0D; border:none; border-radius:10px; padding:13px 28px; font-size:14px; font-weight:700; cursor:pointer; font-family:var(--font-body);">Send to all players →</button>
+        <div id="blastStatus" style="font-size:13px;"></div>
+      </div>
+
+      <!-- Progress log -->
+      <div id="blastLog" style="display:none; background:#F8F9FA; border-radius:10px; padding:16px; font-size:12px; font-family:monospace; max-height:220px; overflow-y:auto; line-height:1.8; border:1px solid var(--border);"></div>
     </div>
   </div>
 </div>
