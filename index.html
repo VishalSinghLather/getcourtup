@@ -4181,7 +4181,8 @@
         blocked: u.blocked || false,
         password: u.password, 
         created_at: u.created_at,
-        joined: u.joined_at ? u.joined_at.split('T')[0] : (u.created_at ? u.created_at.split('T')[0] : '')
+        joined: u.joined_at ? u.joined_at.split('T')[0] : (u.created_at ? u.created_at.split('T')[0] : ''),
+        skill_level: u.skill_level || null
       }));
 
       // Transform sessions + attach bookings
@@ -7633,9 +7634,10 @@
     // Calculate stats for each player
     const playerStats = players.map(u => {
       const sessions = platform.platformSessions.filter(s => s.bookedUserIds.includes(u.id));
-      const bookings = sessions.flatMap(s => (s.bookings || []).filter(b => b.user_id === u.id));
+      // bookings use camelCase userId (set during transform), also cast to string for safety
+      const bookings = sessions.flatMap(s => (s.bookings || []).filter(b => String(b.userId) === String(u.id)));
       const paidBookings = bookings.filter(b => b.status === 'paid' || b.status === 'attended');
-      const totalSpent = paidBookings.reduce((sum, b) => sum + (b.amountPaid || 0), 0);
+      const totalSpent = paidBookings.reduce((sum, b) => sum + (Number(b.amountPaid) || 0), 0);
       const lastSession = sessions.length > 0 
         ? new Date(Math.max(...sessions.map(s => new Date(s.startsAt || s.date).getTime())))
         : null;
@@ -7650,11 +7652,11 @@
     
     container.innerHTML = `
       <table class="data-table">
-        <thead><tr><th>Player</th><th>Contact</th><th>Sessions</th><th>Lifetime Value</th><th>Last Session</th><th style="text-align:right;">Actions</th></tr></thead>
+        <thead><tr><th>Player</th><th>Contact</th><th>Level</th><th>Sessions</th><th>Lifetime Value</th><th>Last Session</th><th style="text-align:right;">Actions</th></tr></thead>
         <tbody>
         ${playerStats.map(stat => {
           const u = stat.user;
-          const joinedDate = u.joined_at ? new Date(u.joined_at).toLocaleDateString('en-AU') : 'N/A';
+          const joinedDate = (u.joined || u.joined_at || u.created_at) ? new Date(u.joined || u.joined_at || u.created_at).toLocaleDateString('en-AU') : 'N/A';
           const lastSessionStr = stat.lastSession 
             ? new Date(stat.lastSession).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })
             : 'Never';
@@ -7674,6 +7676,9 @@
             <td>
               <div style="font-size:13px;">${u.email}</div>
               <div style="font-size:11px; color:var(--text-muted);">${u.phone || 'No phone'}</div>
+            </td>
+            <td>
+              ${u.skill_level ? '<span class="badge" style="background:' + {Beginner:'#EFF6FF',Intermediate:'#FFF7ED',Advanced:'#F0FDF4'}[u.skill_level] + '; color:' + {Beginner:'#3B82F6',Intermediate:'#F97316',Advanced:'#00A878'}[u.skill_level] + '; border:1px solid ' + {Beginner:'#93C5FD',Intermediate:'#FDC99B',Advanced:'#00C896'}[u.skill_level] + ';">' + u.skill_level + '</span>' : '<span style="font-size:12px;color:var(--text-muted);">—</span>'}
             </td>
             <td><span class="badge badge-beg">${stat.totalSessions}</span></td>
             <td style="font-weight:700; color:${stat.totalSpent > 0 ? 'var(--green)' : 'var(--text-muted)'};">$${stat.totalSpent}</td>
@@ -7753,6 +7758,19 @@
           </div>
         </div>
         
+        <!-- Skill Level Section -->
+        <div style="margin-bottom:24px;">
+          <h4 style="font-family:var(--font-display); font-size:14px; font-weight:700; margin-bottom:12px;">🎯 Skill Level</h4>
+          <div style="display:flex; gap:8px;">
+            ${['Beginner','Intermediate','Advanced'].map(level => {
+              const isActive = user.skill_level === level;
+              const colors = {Beginner:'#3B82F6',Intermediate:'#F97316',Advanced:'#00A878'};
+              const bgs = {Beginner:'#EFF6FF',Intermediate:'#FFF7ED',Advanced:'#F0FDF4'};
+              return '<button onclick="setPlayerLevel(\'' + userId + '\', \'' + level + '\', this)" style="padding:8px 20px; border-radius:100px; border:2px solid ' + (isActive ? colors[level] : 'var(--border)') + '; background:' + (isActive ? bgs[level] : 'white') + '; color:' + (isActive ? colors[level] : 'var(--text-muted)') + '; font-weight:' + (isActive ? '700' : '500') + '; font-size:13px; cursor:pointer; font-family:var(--font-body);">' + level + '</button>';
+            }).join('')}
+          </div>
+        </div>
+
         <!-- Tags Section -->
         <div style="margin-bottom:24px;">
           <h4 style="font-family:var(--font-display); font-size:14px; font-weight:700; margin-bottom:12px;">🏷️ Tags</h4>
@@ -7828,6 +7846,26 @@
   }
   
   // Toggle player tag
+  async function setPlayerLevel(userId, level, clickedBtn) {
+    const colors = { Beginner: '#3B82F6', Intermediate: '#F97316', Advanced: '#00A878' };
+    const bgs = { Beginner: '#EFF6FF', Intermediate: '#FFF7ED', Advanced: '#F0FDF4' };
+    const user = platform.users.find(u => u.id === userId);
+    const newLevel = user && user.skill_level === level ? null : level;
+    const { error } = await sb.from('users').update({ skill_level: newLevel }).eq('id', userId);
+    if (error) { showAppToast('Failed to update level'); return; }
+    if (user) user.skill_level = newLevel;
+    const allBtns = clickedBtn.closest('div').querySelectorAll('button');
+    allBtns.forEach(btn => {
+      const btnLevel = btn.textContent.trim();
+      const isActive = btnLevel === newLevel;
+      btn.style.border = '2px solid ' + (isActive ? colors[btnLevel] : 'var(--border)');
+      btn.style.background = isActive ? bgs[btnLevel] : 'white';
+      btn.style.color = isActive ? colors[btnLevel] : 'var(--text-muted)';
+      btn.style.fontWeight = isActive ? '700' : '500';
+    });
+    showAppToast(newLevel ? level + ' level set ✓' : 'Level removed');
+  }
+
   async function togglePlayerTag(userId, tagId, btn) {
     const { data: existing } = await sb.from('player_tags').select('id').eq('user_id', userId).eq('tag', tagId).maybeSingle();
     
