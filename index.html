@@ -7730,12 +7730,11 @@
 
       try {
         const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaG5rZ3plbGxxdHd6emlvYWliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMDQ1MzIsImV4cCI6MjA5MjU4MDUzMn0.ZzVopDQuWy4qSE4KOiL7rZStCGh5f7ssxwFmakbitrQ";
-        const res = await fetch(SUPABASE_URL + '/functions/v1/email-blast', {
+        const res = await fetch(SUPABASE_URL + '/functions/v1/send-discount-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY },
           body: JSON.stringify({
-            playerName: user.name || 'Player',
-            playerEmail: user.email,
+            recipients: [{ email: user.email, name: user.name || 'Player' }],
             subject: subject,
             message: personalised,
             imageBase64: blastImageBase64 || null,
@@ -7743,7 +7742,8 @@
             imageFileName: blastImageFileName || null,
             docBase64: blastDocBase64 || null,
             docMime: blastDocMime || null,
-            docFileName: blastDocFileName || null
+            docFileName: blastDocFileName || null,
+            code: '__blast__'
           })
         });
         const result = await res.json();
