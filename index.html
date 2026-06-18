@@ -4822,43 +4822,97 @@
     const email = document.getElementById("forgotEmail").value.trim().toLowerCase();
     const err = document.getElementById("forgotError");
     const success = document.getElementById("forgotSuccess");
+    const btn = document.querySelector('#authForgotPassword .auth-btn');
     err.classList.remove("show");
     success.style.display = "none";
 
     if (!email) { err.textContent = "Please enter your email"; err.classList.add("show"); return; }
 
-    // Look up user in DB
-    const { data: user, error } = await sb.from('users').select('name, email, password, phone').eq('email', email).maybeSingle();
+    // Disable button to prevent double-click
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
 
-    if (error || !user) {
-      err.textContent = "No account found with that email";
+    try {
+      // Use Supabase Auth's built-in password reset email.
+      // This sends a secure link to the user's email - they click it, set a new password, done.
+      // Always show success even if email doesn't exist (security best practice - don't reveal which emails are registered).
+
+      // Only pass redirectTo when we're on a real http(s) origin.
+      // Locally via file:// the origin is "file://" which Supabase rejects with a 500 error.
+      const isWebOrigin = window.location.protocol === 'http:' || window.location.protocol === 'https:';
+      const resetOptions = isWebOrigin
+        ? { redirectTo: window.location.origin + '/?reset=true' }
+        : {};
+
+      const { error: resetError } = await sb.auth.resetPasswordForEmail(email, resetOptions);
+
+      if (resetError) {
+        console.error('Password reset error:', resetError);
+        // Even on error, show success message for security (don't reveal which emails exist).
+        // Real errors are logged to console for debugging.
+      }
+
+      success.style.display = "block";
+    } catch (e) {
+      console.error('Password reset exception:', e);
+      err.textContent = "Failed to send reset email. Please try again or contact us.";
+      err.classList.add("show");
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Send reset link →'; }
+    }
+  }
+
+  // Called when user submits new password after clicking the reset link in their email.
+  // At this point Supabase has already authenticated them via the recovery token in the URL.
+  async function submitNewPassword() {
+    const newPw = document.getElementById("newPasswordInput").value;
+    const confirmPw = document.getElementById("newPasswordConfirm").value;
+    const err = document.getElementById("newPasswordError");
+    const success = document.getElementById("newPasswordSuccess");
+    const btn = document.querySelector('#authSetNewPassword .auth-btn');
+    err.classList.remove("show");
+    success.style.display = "none";
+
+    if (!newPw || newPw.length < 6) {
+      err.textContent = "Password must be at least 6 characters";
+      err.classList.add("show");
+      return;
+    }
+    if (newPw !== confirmPw) {
+      err.textContent = "Passwords do not match";
       err.classList.add("show");
       return;
     }
 
-    // Send password reminder via Brevo Edge Function
+    if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
+
     try {
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/notify-booking`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": SUPABASE_KEY,
-          "Authorization": `Bearer ${SUPABASE_KEY}`
-        },
-        body: JSON.stringify({
-          type: "forgot_password",
-          playerName: user.name,
-          playerEmail: user.email,
-          playerPhone: user.phone,
-          password: user.password
-        })
-      });
+      const { error: updateError } = await sb.auth.updateUser({ password: newPw });
+      if (updateError) throw updateError;
+
       success.style.display = "block";
+      // Clear the recovery URL params and redirect to home after a short delay
+      setTimeout(function() {
+        window.location.href = window.location.origin + '/';
+      }, 1500);
     } catch (e) {
-      err.textContent = "Failed to send email. Please contact Vishal Singh Lather directly.";
+      console.error('Update password error:', e);
+      err.textContent = "Failed to update password. The reset link may have expired - please request a new one.";
       err.classList.add("show");
+      if (btn) { btn.disabled = false; btn.textContent = 'Update password →'; }
     }
   }
+
+  // Detect when the user arrives via a password recovery link.
+  // Supabase fires a PASSWORD_RECOVERY auth event when the recovery token in the URL is processed.
+  if (typeof sb !== 'undefined' && sb.auth && sb.auth.onAuthStateChange) {
+    sb.auth.onAuthStateChange(function(event, session) {
+      if (event === 'PASSWORD_RECOVERY') {
+        openAuth();
+        showAuthView('setNewPassword');
+      }
+    });
+  }
+
   function showAuthView(view) {
     // Track where we came from before going to forgotPassword
     if (view === 'forgotPassword') {
@@ -4872,7 +4926,7 @@
     ["authRole","authUserLogin","authUserSignup","authManagerLogin"].forEach(id => {
       document.getElementById(id).style.display = "none";
     });
-    const map = { role:"authRole", userLogin:"authUserLogin", userSignup:"authUserSignup", managerLogin:"authManagerLogin", forgotPassword:"authForgotPassword" };
+    const map = { role:"authRole", userLogin:"authUserLogin", userSignup:"authUserSignup", managerLogin:"authManagerLogin", forgotPassword:"authForgotPassword", setNewPassword:"authSetNewPassword" };
     // Hide ALL views first
     Object.values(map).forEach(id => {
       const el = document.getElementById(id);
@@ -9057,7 +9111,7 @@
         amount: correctPrice,
         quantity: 1,
         reference: reference,
-        payIdPhone: '0456 231 911',
+        payIdPhone: '0402 004 683',
         payIdName: 'Vishal Singh Lather',
         venue: s.venue,
         court: s.court,
@@ -9323,7 +9377,7 @@
         amount: totalAmount,
         quantity: successCount,
         reference: reference,
-        payIdPhone: '0456 231 911',
+        payIdPhone: '0402 004 683',
         payIdName: 'Vishal Singh Lather',
         venue: group.venue,
         court: group.court,
@@ -9983,14 +10037,29 @@
     <div id="authForgotPassword" style="display:none;">
       <button class="auth-back" onclick="resetForgotForm(); showAuthView(platform.forgotFrom || 'userLogin');">← Back to login</button>
       <h2 class="auth-title">Reset password</h2>
-      <p class="auth-sub-small">Enter your email and we'll send your current password. You can change it after logging in.</p>
+      <p class="auth-sub-small">Enter your email and we'll send you a secure link to reset your password.</p>
       <label class="auth-label">Email</label>
       <input type="email" class="auth-input" id="forgotEmail" placeholder="you@example.com">
       <div class="auth-error" id="forgotError"></div>
       <div class="auth-success" id="forgotSuccess" style="display:none; background:#E8FFF6; color:#00A878; padding:10px 12px; border-radius:8px; font-size:13px; margin-top:12px; border:1px solid #00C896;">
-        ✓ Password sent! Check your email.
+        ✓ If an account exists for that email, a reset link has been sent. Check your inbox (and spam folder).
       </div>
-      <button class="auth-btn green" onclick="sendForgotPassword()">Send password →</button>
+      <button class="auth-btn green" onclick="sendForgotPassword()">Send reset link →</button>
+    </div>
+
+    <!-- Set new password (after clicking email reset link) -->
+    <div id="authSetNewPassword" style="display:none;">
+      <h2 class="auth-title">Set new password</h2>
+      <p class="auth-sub-small">Enter your new password below. You'll be logged in automatically.</p>
+      <label class="auth-label">New password</label>
+      <input type="password" class="auth-input" id="newPasswordInput" placeholder="At least 6 characters">
+      <label class="auth-label">Confirm new password</label>
+      <input type="password" class="auth-input" id="newPasswordConfirm" placeholder="Re-enter password">
+      <div class="auth-error" id="newPasswordError"></div>
+      <div class="auth-success" id="newPasswordSuccess" style="display:none; background:#E8FFF6; color:#00A878; padding:10px 12px; border-radius:8px; font-size:13px; margin-top:12px; border:1px solid #00C896;">
+        ✓ Password updated! Redirecting...
+      </div>
+      <button class="auth-btn green" onclick="submitNewPassword()">Update password →</button>
     </div>
 
     <!-- Manager login -->
