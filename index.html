@@ -4886,6 +4886,12 @@
     if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
 
     try {
+      // Verify a session exists before trying to update (helpful diagnostic)
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) {
+        throw new Error('No recovery session active. The reset link may have expired or was already used. Please request a new reset link.');
+      }
+
       const { error: updateError } = await sb.auth.updateUser({ password: newPw });
       if (updateError) throw updateError;
 
@@ -4896,7 +4902,9 @@
       }, 1500);
     } catch (e) {
       console.error('Update password error:', e);
-      err.textContent = "Failed to update password. The reset link may have expired - please request a new one.";
+      // Show the actual error message so we can diagnose issues
+      const errMsg = (e && e.message) ? e.message : 'Failed to update password.';
+      err.textContent = errMsg + ' (If this persists, request a new reset link.)';
       err.classList.add("show");
       if (btn) { btn.disabled = false; btn.textContent = 'Update password →'; }
     }
@@ -4919,22 +4927,42 @@
   // The supabase-js client auto-processes the hash and establishes a session,
   // but the PASSWORD_RECOVERY event may fire before our listener is ready.
   // So we ALSO check the URL directly for the recovery type as a fallback.
-  function checkForPasswordRecovery() {
+  async function checkForPasswordRecovery() {
     const hash = window.location.hash || '';
     const search = window.location.search || '';
     const isRecovery =
       hash.indexOf('type=recovery') !== -1 ||
       search.indexOf('reset=true') !== -1;
 
-    if (isRecovery) {
-      // Clean up the URL so the tokens don't linger in the address bar
+    if (!isRecovery) return;
+
+    // Wait for supabase-js to detect the session from the URL hash before doing ANYTHING else.
+    // If we clean the URL too early, the client never sees the tokens and updateUser() will fail.
+    if (typeof sb !== 'undefined' && sb.auth) {
       try {
-        if (window.history && window.history.replaceState) {
-          window.history.replaceState(null, '', window.location.pathname);
+        // Give supabase-js a moment to process the URL hash (it does this on init).
+        // Then poll briefly until a session exists (max ~3 seconds).
+        let attempts = 0;
+        const maxAttempts = 30;
+        while (attempts < maxAttempts) {
+          const { data: { session } } = await sb.auth.getSession();
+          if (session) break;
+          await new Promise(r => setTimeout(r, 100));
+          attempts++;
         }
-      } catch (_) {}
-      triggerPasswordRecoveryUI();
+      } catch (e) {
+        console.error('Error waiting for recovery session:', e);
+      }
     }
+
+    // Only NOW clean up the URL (after session is established)
+    try {
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    } catch (_) {}
+
+    triggerPasswordRecoveryUI();
   }
 
   // Run as soon as the DOM is parseable. If we're already past that point, run immediately.
