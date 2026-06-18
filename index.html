@@ -3579,6 +3579,24 @@
   // ============ SUPABASE SETUP ============
   const SUPABASE_URL = "https://lfhnkgzellqtwzzioaib.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmaG5rZ3plbGxxdHd6emlvYWliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMDQ1MzIsImV4cCI6MjA5MjU4MDUzMn0.ZzVopDQuWy4qSE4KOiL7rZStCGh5f7ssxwFmakbitrQ";
+
+  // Silence verbose console.log output in production (errors and warnings still show).
+  // To re-enable for debugging: set DEBUG_LOGS = true OR open with ?debug=1 in the URL.
+  const DEBUG_LOGS = (function () {
+    try {
+      return window.location.search.indexOf('debug=1') !== -1
+          || window.location.hostname === 'localhost'
+          || window.location.protocol === 'file:';
+    } catch (_) { return false; }
+  })();
+  if (!DEBUG_LOGS) {
+    console.log = function () {};
+    console.info = function () {};
+    console.debug = function () {};
+    // Note: console.error and console.warn are intentionally NOT silenced
+    // so real issues are still visible if anyone inspects the page.
+  }
+
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
       persistSession: true,
