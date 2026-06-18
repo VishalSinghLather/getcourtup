@@ -4902,13 +4902,53 @@
     }
   }
 
-  // Detect when the user arrives via a password recovery link.
-  // Supabase fires a PASSWORD_RECOVERY auth event when the recovery token in the URL is processed.
+  // Show the "set new password" form. Used by both URL detection and onAuthStateChange.
+  function triggerPasswordRecoveryUI() {
+    // Wait until openAuth and showAuthView are available (they're defined later in the file)
+    if (typeof openAuth === 'function' && typeof showAuthView === 'function') {
+      openAuth();
+      showAuthView('setNewPassword');
+    } else {
+      // Defer until DOM and other functions are ready
+      setTimeout(triggerPasswordRecoveryUI, 100);
+    }
+  }
+
+  // Detect a password recovery URL on page load.
+  // Supabase appends auth info to the URL hash like: #access_token=...&type=recovery&...
+  // The supabase-js client auto-processes the hash and establishes a session,
+  // but the PASSWORD_RECOVERY event may fire before our listener is ready.
+  // So we ALSO check the URL directly for the recovery type as a fallback.
+  function checkForPasswordRecovery() {
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    const isRecovery =
+      hash.indexOf('type=recovery') !== -1 ||
+      search.indexOf('reset=true') !== -1;
+
+    if (isRecovery) {
+      // Clean up the URL so the tokens don't linger in the address bar
+      try {
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      } catch (_) {}
+      triggerPasswordRecoveryUI();
+    }
+  }
+
+  // Run as soon as the DOM is parseable. If we're already past that point, run immediately.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkForPasswordRecovery);
+  } else {
+    checkForPasswordRecovery();
+  }
+
+  // Also listen for the official PASSWORD_RECOVERY event as a belt-and-suspenders backup.
   if (typeof sb !== 'undefined' && sb.auth && sb.auth.onAuthStateChange) {
     sb.auth.onAuthStateChange(function(event, session) {
       if (event === 'PASSWORD_RECOVERY') {
-        openAuth();
-        showAuthView('setNewPassword');
+        triggerPasswordRecoveryUI();
       }
     });
   }
