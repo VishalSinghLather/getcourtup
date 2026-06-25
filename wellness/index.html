@@ -8,8 +8,9 @@
 <title>AcademyPulse – Roketto Badminton</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f7f9fc;-webkit-font-smoothing:antialiased}
@@ -27,7 +28,7 @@ const { useState, useEffect, useCallback } = React;
 // ── Supabase client ───────────────────────────────────────────────────────
 const SUPA_URL = "https://djjupaxlkuhsykwczfoa.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqanVwYXhsa3Voc3lrd2N6Zm9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzNDg3MDEsImV4cCI6MjA5NzkyNDcwMX0.3TKNoZgOsVaAUmw6DLYixrXzKDOTxsh33ptVFlVHQBU";
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+const sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
 const TODAY = new Date().toISOString().split("T")[0];
 const COLORS = [
