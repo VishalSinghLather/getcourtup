@@ -643,18 +643,38 @@ function bootApp() {
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   sb.auth.onAuthStateChange(async (event, session) => {
-    if (session?.user) {
-      currentUser = session.user;
-      const { data: prof } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
-      if (prof) { currentProfile = prof; loadApp(); }
-      else { show('s-auth'); }
+    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+      if (session?.user) {
+        currentUser = session.user;
+        const { data: prof } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+        if (prof) {
+          currentProfile = prof;
+          // Clean the URL so the confirmation tokens don't stay visible
+          if (window.location.hash) history.replaceState(null, '', window.location.pathname);
+          loadApp();
+        } else {
+          // User confirmed email but profile not created yet — show auth with message
+          show('s-auth');
+          setMsg('Email confirmed! You can now log in.', 'alert-ok');
+        }
+      }
     } else if (event === 'SIGNED_OUT') {
       show('s-auth');
     }
   });
 
+  // Handle email confirmation token in URL on page load
   sb.auth.getSession().then(({ data: { session } }) => {
-    if (!session) show('s-auth');
+    if (!session) {
+      // Check if this is a confirmation redirect (has token in URL)
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        // Supabase will pick this up via onAuthStateChange above
+        show('s-loading');
+      } else {
+        show('s-auth');
+      }
+    }
   });
 }
 </script>
