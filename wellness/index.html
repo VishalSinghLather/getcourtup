@@ -104,7 +104,10 @@ input[type=range]{width:100%;accent-color:#185FA5;cursor:pointer}
 <div id="s-player" class="screen">
   <div class="topbar">
     <span class="topbar-title" id="p-title">Daily log</span>
-    <button class="topbar-btn" id="so-p">Sign out</button>
+    <div style="display:flex;gap:6px">
+      <button class="topbar-btn" id="profile-btn">Profile</button>
+      <button class="topbar-btn" id="so-p">Sign out</button>
+    </div>
   </div>
   <div class="r-bar">
     <span style="font-size:13px;color:#666">Readiness score</span>
@@ -131,6 +134,32 @@ input[type=range]{width:100%;accent-color:#185FA5;cursor:pointer}
     <div id="suc-inj" class="alert alert-err" style="display:none;margin-bottom:12px">⚠️ Injury flagged — your coach has been notified</div>
     <button class="btn btn-ghost" id="edit-btn2">Edit today's log</button>
     <div style="height:2rem"></div>
+  </div>
+</div>
+
+<div id="s-profile" class="screen">
+  <div class="topbar">
+    <button class="back-btn" id="profile-back">&#8249;</button>
+    <span class="topbar-title">My profile</span>
+    <button class="topbar-btn" id="profile-save-btn">Save</button>
+  </div>
+  <div class="body" style="padding-top:20px">
+    <div id="profile-msg"></div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;margin-bottom:14px">Personal details</div>
+      <label class="lbl">Full name</label>
+      <input id="prof-name" class="inp" style="margin-bottom:12px" placeholder="Your full name"/>
+      <label class="lbl">Age</label>
+      <input id="prof-age" class="inp" type="number" style="margin-bottom:12px" placeholder="e.g. 22"/>
+      <label class="lbl">Body weight (kg)</label>
+      <input id="prof-weight" class="inp" type="number" style="margin-bottom:4px" placeholder="e.g. 75"/>
+      <div style="font-size:12px;color:#888;margin-bottom:14px">Used to calculate your protein target</div>
+      <div id="protein-calc" style="background:#EAF3DE;border-radius:10px;padding:12px;display:none">
+        <div style="font-size:12px;color:#3B6D11;font-weight:500">Recommended protein target</div>
+        <div id="protein-calc-val" style="font-size:22px;font-weight:700;color:#3B6D11;margin-top:2px"></div>
+        <div style="font-size:11px;color:#3B6D11;margin-top:2px">Based on 2g per kg of body weight</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -331,6 +360,18 @@ function setupListeners() {
       document.getElementById('tc-'+this.dataset.tc).classList.add('active');
     });
   });
+  document.getElementById('profile-btn').addEventListener('click', openProfile);
+  document.getElementById('profile-back').addEventListener('click', function(){show('s-player');});
+  document.getElementById('profile-save-btn').addEventListener('click', saveProfile);
+  document.getElementById('prof-weight').addEventListener('input', function(){
+    var w = parseFloat(this.value);
+    var calc = document.getElementById('protein-calc');
+    var val = document.getElementById('protein-calc-val');
+    if(w > 0){
+      calc.style.display = 'block';
+      val.textContent = Math.round(w * 2) + 'g per day';
+    } else { calc.style.display = 'none'; }
+  });
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -403,10 +444,51 @@ function signOut() {
   });
 }
 
+// ── Profile ───────────────────────────────────────────────────────────────────
+function openProfile() {
+  document.getElementById('profile-msg').innerHTML = '';
+  document.getElementById('prof-name').value = currentProfile.name || '';
+  document.getElementById('prof-age').value = currentProfile.age || '';
+  document.getElementById('prof-weight').value = currentProfile.weight_kg || '';
+  var w = parseFloat(currentProfile.weight_kg);
+  if(w > 0){
+    document.getElementById('protein-calc').style.display = 'block';
+    document.getElementById('protein-calc-val').textContent = Math.round(w*2) + 'g per day';
+  }
+  show('s-profile');
+}
+
+function saveProfile() {
+  var name = document.getElementById('prof-name').value.trim();
+  var age = parseInt(document.getElementById('prof-age').value) || null;
+  var weight = parseFloat(document.getElementById('prof-weight').value) || null;
+  if(!name){ document.getElementById('profile-msg').innerHTML = '<div class="alert alert-err">Please enter your name.</div>'; return; }
+  var proteinTarget = weight ? Math.round(weight * 2) : (currentProfile.protein_target || 160);
+  var btn = document.getElementById('profile-save-btn');
+  btn.textContent = 'Saving...'; btn.disabled = true;
+  sb.from('profiles').update({name:name, age:age, weight_kg:weight, protein_target:proteinTarget})
+    .eq('id', currentUser.id).then(function(res){
+      if(res.error){ document.getElementById('profile-msg').innerHTML = '<div class="alert alert-err">'+res.error.message+'</div>'; }
+      else {
+        currentProfile.name = name; currentProfile.age = age;
+        currentProfile.weight_kg = weight; currentProfile.protein_target = proteinTarget;
+        document.getElementById('p-title').textContent = name;
+        document.getElementById('profile-msg').innerHTML = '<div class="alert alert-ok">Profile saved!</div>';
+        setTimeout(function(){ show('s-player'); buildForm(); }, 1000);
+      }
+      btn.textContent = 'Save'; btn.disabled = false;
+    });
+}
+
 // ── App router ────────────────────────────────────────────────────────────────
 function loadApp() {
   if(currentProfile.role==='coach'){show('s-coach');loadCoach();}
-  else{document.getElementById('p-title').textContent=currentProfile.name;show('s-player');buildForm();}
+  else{
+    document.getElementById('p-title').textContent=currentProfile.name;
+    var dateEl=document.getElementById('today-date');
+    if(dateEl) dateEl.textContent=new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'});
+    show('s-player');buildForm();
+  }
 }
 
 // ── Player form ───────────────────────────────────────────────────────────────
