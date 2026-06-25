@@ -72,7 +72,7 @@ input[type=range]{width:100%;accent-color:#185FA5;cursor:pointer}
   <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh">
     <div style="font-size:44px;margin-bottom:16px">🏸</div>
     <div class="spinner"></div>
-    <div style="font-size:13px;color:#aaa;margin-top:16px">Loading...</div>
+    <div id="load-msg" style="font-size:13px;color:#aaa;margin-top:16px">Loading...</div>
   </div>
 </div>
 
@@ -158,12 +158,20 @@ input[type=range]{width:100%;accent-color:#185FA5;cursor:pointer}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Show error if stuck loading after 5 seconds
+  var loadTimeout = setTimeout(function() {
+    var el = document.getElementById('load-msg');
+    if (el) el.innerHTML = 'Taking too long. <a href="javascript:location.reload()" style="color:#185FA5">Tap to reload</a><br><span style="font-size:11px;color:#aaa;margin-top:4px;display:block">If this keeps happening, check your internet connection.</span>';
+  }, 5000);
+  window._clearLoadTimeout = function() { clearTimeout(loadTimeout); };
+
   if (typeof supabase === 'undefined') {
     document.getElementById('s-loading').innerHTML =
       '<div style="padding:2rem;text-align:center;color:#A32D2D">Failed to load. Please check your internet connection and refresh.</div>';
     return;
   }
   (function bootApp() {
+    if (window._clearLoadTimeout) window._clearLoadTimeout();
   const SUPA_URL = "https://djjupaxlkuhsykwczfoa.supabase.co";
   const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqanVwYXhsa3Voc3lrd2N6Zm9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzNDg3MDEsImV4cCI6MjA5NzkyNDcwMX0.3TKNoZgOsVaAUmw6DLYixrXzKDOTxsh33ptVFlVHQBU";
   const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
