@@ -244,6 +244,17 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('tab-login').addEventListener('click', () => setAuthMode('login'));
   document.getElementById('tab-signup').addEventListener('click', () => setAuthMode('signup'));
   document.getElementById('switch-lnk').addEventListener('click', e => { e.preventDefault(); setAuthMode(authMode==='login'?'signup':'login'); });
+
+  document.getElementById('resend-lnk').addEventListener('click', async function(e) {
+    e.preventDefault();
+    const email = document.getElementById('inp-email').value.trim();
+    if (!email) { setMsg('Enter your email above first, then click resend.'); return; }
+    this.textContent = 'Sending...';
+    const { error } = await sb.auth.resend({ type: 'signup', email });
+    if (error) { setMsg(error.message); }
+    else { setMsg('Confirmation email resent! Check your inbox.', 'alert-ok'); }
+    this.textContent = 'Resend email';
+  });
   document.getElementById('inp-pw').addEventListener('keydown', e => { if(e.key==='Enter') doAuth(); });
 
   document.getElementById('auth-btn').addEventListener('click', doAuth);
@@ -669,10 +680,15 @@ document.addEventListener('DOMContentLoaded', function() {
   // Handle email confirmation token in URL on page load
   sb.auth.getSession().then(({ data: { session } }) => {
     if (!session) {
-      // Check if this is a confirmation redirect (has token in URL)
       const hash = window.location.hash;
-      if (hash && hash.includes('access_token')) {
-        // Supabase will pick this up via onAuthStateChange above
+      // Check for errors in URL (e.g. expired link)
+      if (hash && hash.includes('error=')) {
+        const params = new URLSearchParams(hash.replace('#',''));
+        const desc = params.get('error_description') || 'The link has expired.';
+        history.replaceState(null, '', window.location.pathname);
+        show('s-auth');
+        setMsg(desc.replace(/\+/g,' ') + ' Please log in or request a new link.', 'alert-err');
+      } else if (hash && hash.includes('access_token')) {
         show('s-loading');
       } else {
         show('s-auth');
