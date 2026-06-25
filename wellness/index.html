@@ -5,177 +5,120 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
 <meta name="theme-color" content="#1A2C45"/>
 <meta name="mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
 <title>AcademyPulse – Roketto Badminton</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f7f9fc;color:#1a2c45;-webkit-font-smoothing:antialiased}
-input,button,textarea,select{font-family:inherit}
-input[type=range]{width:100%;accent-color:#185FA5;height:4px;cursor:pointer}
-::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px}
+input,button,textarea{font-family:inherit}
+input[type=range]{width:100%;accent-color:#185FA5;cursor:pointer}
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-
-.screen{display:none;animation:fadeIn .2s ease}
-.screen.active{display:block}
-
-/* topbar */
+.screen{display:none}.screen.active{display:block}
 .topbar{background:#1A2C45;padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
 .topbar-title{color:#fff;font-size:16px;font-weight:600;flex:1}
 .back-btn{background:none;border:none;color:#fff;font-size:24px;cursor:pointer;padding:0;line-height:1;width:28px}
 .topbar-btn{background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:12px;padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:500}
-
-/* body */
 .body{padding:16px;max-width:480px;margin:0 auto}
-
-/* cards */
 .card{background:#fff;border:0.5px solid #e0e6ed;border-radius:14px;padding:14px 16px;margin-bottom:12px}
-.card-click{cursor:pointer;transition:box-shadow .15s}
-.card-click:active{opacity:.85}
-
-/* form */
 .field-label{font-size:12px;color:#666;margin-bottom:8px;display:block;font-weight:500}
 .inp{width:100%;padding:11px 14px;border-radius:10px;border:0.5px solid #d0d7e0;font-size:14px;outline:none;background:#fff;color:#1a2c45;transition:border-color .2s}
 .inp:focus{border-color:#185FA5}
-.inp-err{border-color:#E24B4A!important}
-
-/* buttons */
-.btn{width:100%;padding:14px;border-radius:12px;font-size:15px;font-weight:600;border:none;cursor:pointer;transition:opacity .15s}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.btn:active:not(:disabled){opacity:.8}
+.btn{width:100%;padding:14px;border-radius:12px;font-size:15px;font-weight:600;border:none;cursor:pointer;margin-top:4px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
 .btn-primary{background:#1A2C45;color:#fff}
 .btn-secondary{background:#f0f4f8;color:#1a2c45;margin-top:8px}
-.btn-amber{background:#E8A020;color:#fff}
-
-/* alerts */
-.alert{padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;margin-bottom:14px}
+.alert{padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;margin-bottom:12px}
 .alert-err{background:#FCEBEB;color:#A32D2D;border:0.5px solid #E24B4A}
 .alert-ok{background:#EAF3DE;color:#3B6D11;border:0.5px solid #639922}
-.alert-warn{background:#FCEBEB;border-bottom:1px solid #E24B4A;border-radius:0;margin-bottom:0;padding:10px 16px}
-
-/* badges */
 .badge{display:inline-block;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px}
 .badge-green{background:#EAF3DE;color:#3B6D11}
 .badge-amber{background:#FAEEDA;color:#854F0B}
 .badge-red{background:#FCEBEB;color:#A32D2D}
 .badge-gray{background:#f0f0f0;color:#888}
-
-/* pips */
 .pip-row{display:flex;gap:6px;flex-wrap:wrap}
-.pip{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;border:0.5px solid #ddd;background:#f5f5f5;color:#555;transition:all .1s;user-select:none}
+.pip{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;border:0.5px solid #ddd;background:#f5f5f5;color:#555;user-select:none}
 .pip:active{transform:scale(.92)}
 .pip.g{background:#EAF3DE;color:#3B6D11;border-color:#639922;font-weight:700}
 .pip.a{background:#FAEEDA;color:#854F0B;border-color:#BA7517;font-weight:700}
 .pip.r{background:#FCEBEB;color:#A32D2D;border-color:#E24B4A;font-weight:700}
-
-/* slider row */
 .slider-row{display:flex;align-items:center;gap:12px}
 .slider-val{min-width:54px;text-align:right;font-weight:600;font-size:15px}
-
-/* toggle */
 .toggle{width:48px;height:26px;border-radius:13px;background:#ddd;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
 .toggle.on{background:#E24B4A}
 .toggle-knob{width:20px;height:20px;background:#fff;border-radius:50%;position:absolute;top:3px;left:3px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .toggle.on .toggle-knob{left:25px}
-
-/* player row */
 .player-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:0.5px solid #f0f0f0}
 .player-row:last-child{border-bottom:none}
 .avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex-shrink:0}
-
-/* tabs */
 .tabs{display:flex;background:#fff;border-bottom:0.5px solid #e0e6ed}
-.tab{flex:1;padding:13px 0;border:none;background:none;cursor:pointer;font-size:13px;color:#888;border-bottom:2px solid transparent;transition:all .15s}
+.tab{flex:1;padding:13px 0;border:none;background:none;cursor:pointer;font-size:13px;color:#888;border-bottom:2px solid transparent}
 .tab.active{color:#185FA5;border-bottom-color:#185FA5;font-weight:600}
-
-/* metric grid */
+.tab-content{display:none}.tab-content.active{display:block}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .metric{background:#f0f4f8;border-radius:10px;padding:12px}
-
-/* trend bars */
 .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
 .bar-bg{flex:1;height:8px;background:#eee;border-radius:4px;overflow:hidden}
-.bar-fill{height:100%;border-radius:4px;transition:width .4s}
-
-/* readiness banner */
+.bar-fill{height:100%;border-radius:4px}
 .r-banner{background:#fff;border-bottom:0.5px solid #eee;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
-
-/* spinner */
 .spinner-wrap{display:flex;justify-content:center;padding:3rem}
 .spinner{width:32px;height:32px;border:3px solid #eee;border-top-color:#185FA5;border-radius:50%;animation:spin .8s linear infinite}
-
-/* tabs content */
-.tab-content{display:none}.tab-content.active{display:block}
-
-.hint{font-size:11px;color:#aaa;text-align:center;margin-top:6px}
+.hint{font-size:11px;color:#aaa;text-align:center;margin-top:8px}
+.injury-warn{background:#FCEBEB;border-bottom:1px solid #E24B4A;padding:10px 16px;font-size:13px;font-weight:500;color:#A32D2D;display:none}
 </style>
 </head>
 <body>
 
-<!-- ── LOADING ── -->
 <div id="s-loading" class="screen active">
   <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh">
-    <div style="font-size:40px;margin-bottom:16px">🏸</div>
+    <div style="font-size:44px;margin-bottom:16px">🏸</div>
     <div class="spinner"></div>
+    <div style="font-size:13px;color:#aaa;margin-top:16px">Loading...</div>
   </div>
 </div>
 
-<!-- ── AUTH ── -->
 <div id="s-auth" class="screen">
-  <div class="topbar">
-    <span class="topbar-title" style="font-size:18px">🏸 AcademyPulse</span>
-  </div>
+  <div class="topbar"><span class="topbar-title" style="font-size:18px">🏸 AcademyPulse</span></div>
   <div class="body" style="padding-top:20px">
-    <div style="font-size:13px;color:#7F9AB5;margin-bottom:20px">Roketto Badminton Academy</div>
-
+    
     <div class="tabs" style="border-radius:10px;margin-bottom:20px;overflow:hidden">
-      <button class="tab active" onclick="authTab('login',this)">Log in</button>
-      <button class="tab" onclick="authTab('signup',this)">Create account</button>
+      <button class="tab active" id="tab-login">Log in</button>
+      <button class="tab" id="tab-signup">Create account</button>
     </div>
-
     <div id="auth-msg"></div>
-
-    <div id="signup-name-wrap" style="display:none;margin-bottom:12px">
+    <div id="name-wrap" style="display:none;margin-bottom:12px">
       <label class="field-label">Your full name</label>
-      <input id="inp-name" class="inp" placeholder="e.g. Alex Kim" autocomplete="name"/>
+      <input id="inp-name" class="inp" placeholder="e.g. Alex Kim"/>
     </div>
     <div style="margin-bottom:12px">
       <label class="field-label">Email</label>
-      <input id="inp-email" class="inp" type="email" placeholder="you@email.com" autocomplete="email"/>
+      <input id="inp-email" class="inp" type="email" placeholder="you@email.com"/>
     </div>
     <div style="margin-bottom:20px">
       <label class="field-label">Password</label>
-      <input id="inp-pw" class="inp" type="password" placeholder="Min 6 characters" autocomplete="current-password"
-        onkeydown="if(event.key==='Enter')doAuth()"/>
+      <input id="inp-pw" class="inp" type="password" placeholder="Min 6 characters"/>
     </div>
-    <button class="btn btn-primary" id="auth-btn" onclick="doAuth()">Log in ›</button>
+    <button class="btn btn-primary" id="auth-btn">Log in ›</button>
     <p class="hint" style="margin-top:12px">
-      <span id="auth-switch-txt">New here?</span>
-      <a href="#" onclick="authTab(authMode==='login'?'signup':'login',null);return false"
-        style="color:#185FA5;font-weight:600;text-decoration:none"> <span id="auth-switch-lnk">Create account</span></a>
+      <span id="switch-txt">New here?</span>
+      <a href="#" id="switch-lnk" style="color:#185FA5;font-weight:600;text-decoration:none"> Create account</a>
     </p>
   </div>
 </div>
 
-<!-- ── PLAYER LOG ── -->
 <div id="s-player" class="screen">
   <div class="topbar">
-    <span class="topbar-title" id="player-name-title">Daily log</span>
-    <button class="topbar-btn" onclick="signOut()">Sign out</button>
+    <span class="topbar-title" id="player-title">Daily log</span>
+    <button class="topbar-btn" id="btn-signout-player">Sign out</button>
   </div>
   <div class="r-banner">
     <span style="font-size:13px;color:#666">Readiness score</span>
     <span id="live-r" style="font-size:22px;font-weight:700;color:#888">—</span>
   </div>
-  <div class="body" id="player-body">
-    <div style="height:1rem"></div>
-  </div>
+  <div class="body" id="player-body"></div>
 </div>
 
-<!-- ── SUCCESS ── -->
 <div id="s-success" class="screen">
   <div class="topbar">
-    <button class="back-btn" onclick="show('s-player');buildPlayerForm()">‹</button>
+    <button class="back-btn" id="btn-edit-log">‹</button>
     <span class="topbar-title">Log saved</span>
   </div>
   <div class="body" style="text-align:center;padding-top:2rem">
@@ -188,23 +131,22 @@ input[type=range]{width:100%;accent-color:#185FA5;height:4px;cursor:pointer}
       <div id="suc-lbl" style="font-size:13px;margin-top:6px;font-weight:500">—</div>
     </div>
     <div class="grid2" id="suc-stats"></div>
-    <div id="suc-injury" style="display:none" class="alert alert-err" style="margin-bottom:12px">⚠️ Injury flagged — your coach has been notified</div>
-    <button class="btn btn-secondary" onclick="show('s-player');buildPlayerForm()">Edit today's log</button>
+    <div id="suc-injury" class="alert alert-err" style="display:none;margin-bottom:12px">⚠️ Injury flagged — your coach has been notified</div>
+    <button class="btn btn-secondary" id="btn-edit-log2">Edit today's log</button>
     <div style="height:2rem"></div>
   </div>
 </div>
 
-<!-- ── COACH ── -->
 <div id="s-coach" class="screen">
   <div class="topbar">
     <span class="topbar-title">Coach dashboard</span>
-    <button class="topbar-btn" onclick="signOut()">Sign out</button>
+    <button class="topbar-btn" id="btn-signout-coach">Sign out</button>
   </div>
-  <div id="injury-banner" style="display:none" class="alert alert-warn"></div>
+  <div id="injury-banner" class="injury-warn"></div>
   <div class="tabs">
-    <button class="tab active" onclick="coachTab('today',this)">Today</button>
-    <button class="tab" onclick="coachTab('trends',this)">Trends</button>
-    <button class="tab" onclick="coachTab('protein',this)">Protein</button>
+    <button class="tab active" data-tab="today">Today</button>
+    <button class="tab" data-tab="trends">Trends</button>
+    <button class="tab" data-tab="protein">Protein</button>
   </div>
   <div class="body">
     <div id="tc-today" class="tab-content active"></div>
@@ -213,455 +155,508 @@ input[type=range]{width:100%;accent-color:#185FA5;height:4px;cursor:pointer}
   </div>
 </div>
 
-<script type="module">
-// ── Supabase ───────────────────────────────────────────────────────────────
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+<script>
+// Load Supabase then boot the app
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  s.onload = bootApp;
+  s.onerror = function() {
+    document.getElementById('s-loading').innerHTML =
+      '<div style="padding:2rem;text-align:center;color:#A32D2D">Failed to load. Please check your internet connection and refresh.</div>';
+  };
+  document.head.appendChild(s);
+})();
 
-const SUPA_URL = "https://djjupaxlkuhsykwczfoa.supabase.co";
-const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqanVwYXhsa3Voc3lrd2N6Zm9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzNDg3MDEsImV4cCI6MjA5NzkyNDcwMX0.3TKNoZgOsVaAUmw6DLYixrXzKDOTxsh33ptVFlVHQBU";
-const sb = createClient(SUPA_URL, SUPA_KEY);
+function bootApp() {
+  const SUPA_URL = "https://djjupaxlkuhsykwczfoa.supabase.co";
+  const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqanVwYXhsa3Voc3lrd2N6Zm9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzNDg3MDEsImV4cCI6MjA5NzkyNDcwMX0.3TKNoZgOsVaAUmw6DLYixrXzKDOTxsh33ptVFlVHQBU";
+  const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
-// ── Globals ────────────────────────────────────────────────────────────────
-const TODAY = new Date().toISOString().split("T")[0];
-const COLORS = [
-  {bg:"#B5D4F4",fg:"#0C447C"},{bg:"#9FE1CB",fg:"#085041"},
-  {bg:"#FAC775",fg:"#633806"},{bg:"#CECBF6",fg:"#3C3489"},
-  {bg:"#F5C4B3",fg:"#712B13"}
-];
-let currentUser = null;
-let currentProfile = null;
-window.authMode = 'login';
+  const TODAY = new Date().toISOString().split('T')[0];
+  const COLORS = [
+    {bg:'#B5D4F4',fg:'#0C447C'},{bg:'#9FE1CB',fg:'#085041'},
+    {bg:'#FAC775',fg:'#633806'},{bg:'#CECBF6',fg:'#3C3489'},
+    {bg:'#F5C4B3',fg:'#712B13'}
+  ];
 
-// expose helpers to inline handlers
-window.show = show;
-window.signOut = signOut;
-window.doAuth = doAuth;
-window.authTab = authTab;
-window.coachTab = coachTab;
-window.buildPlayerForm = buildPlayerForm;
+  let currentUser = null;
+  let currentProfile = null;
+  let authMode = 'login';
+  let pState = {};
+  let coachTimer = null;
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-function show(id) {
-  document.querySelectorAll('.screen').forEach(s => { s.classList.remove('active'); });
-  document.getElementById(id).classList.add('active');
-  window.scrollTo(0,0);
-}
+  // ── Utilities ────────────────────────────────────────────────────────────
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo(0, 0);
+  }
 
-function initials(name) {
-  const p = name.trim().split(' ');
-  return p.length >= 2 ? (p[0][0]+p[p.length-1][0]).toUpperCase() : name.substring(0,2).toUpperCase();
-}
+  function initials(name) {
+    const p = name.trim().split(' ');
+    return p.length >= 2 ? (p[0][0] + p[p.length-1][0]).toUpperCase() : name.substring(0,2).toUpperCase();
+  }
 
-function calcR(sq, sor, hr) {
-  if (!sq || !sor || !hr) return null;
-  return Math.round((sq/10)*35 + ((10-sor)/10)*35 + (hr<70?30:hr<85?15:0));
-}
-function rColor(r) { return r===null?'#888':r>=80?'#3B6D11':r>=50?'#854F0B':'#A32D2D'; }
-function rLabel(r) { return !r?'—':r>=80?'Ready to train hard':r>=50?'Moderate load recommended':'Recovery day recommended'; }
-function badgeClass(r) { return r===null?'badge-gray':r>=80?'badge-green':r>=50?'badge-amber':'badge-red'; }
-function avatarEl(name, idx) {
-  const c = COLORS[idx % COLORS.length];
-  return `<div class="avatar" style="background:${c.bg};color:${c.fg}">${initials(name)}</div>`;
-}
-function last7() {
-  return Array.from({length:7}, (_,i) => { const d=new Date(); d.setDate(d.getDate()-(6-i)); return d.toISOString().split('T')[0]; });
-}
-function dayLabel(dateStr) {
-  return new Date(dateStr).toLocaleDateString('en-AU', {weekday:'short'});
-}
-function setMsg(html, cls='alert-err') {
-  const el = document.getElementById('auth-msg');
-  el.innerHTML = html ? `<div class="alert ${cls}">${html}</div>` : '';
-}
+  function calcR(sq, sor, hr) {
+    if (!sq || !sor || !hr) return null;
+    return Math.round((sq/10)*35 + ((10-sor)/10)*35 + (hr<70?30:hr<85?15:0));
+  }
+  function rColor(r) { return r==null?'#888':r>=80?'#3B6D11':r>=50?'#854F0B':'#A32D2D'; }
+  function rLabel(r) { return !r?'—':r>=80?'Ready to train hard':r>=50?'Moderate load recommended':'Recovery day recommended'; }
+  function badgeCls(r) { return r==null?'badge-gray':r>=80?'badge-green':r>=50?'badge-amber':'badge-red'; }
 
-// ── Auth ───────────────────────────────────────────────────────────────────
-function authTab(mode, el) {
-  window.authMode = mode;
-  document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
-  if (el) el.classList.add('active');
-  else document.querySelectorAll('.tabs .tab')[mode==='login'?0:1].classList.add('active');
-  document.getElementById('signup-name-wrap').style.display = mode==='signup' ? 'block' : 'none';
-  document.getElementById('auth-btn').textContent = mode==='login' ? 'Log in ›' : 'Create account ›';
-  document.getElementById('auth-switch-txt').textContent = mode==='login' ? 'New here?' : 'Have an account?';
-  document.getElementById('auth-switch-lnk').textContent = mode==='login' ? 'Create account' : 'Log in';
-  setMsg('');
-}
+  function avatarHTML(name, idx) {
+    const c = COLORS[idx % COLORS.length];
+    return `<div class="avatar" style="background:${c.bg};color:${c.fg}">${initials(name)}</div>`;
+  }
 
-async function doAuth() {
-  const email = document.getElementById('inp-email').value.trim();
-  const pw    = document.getElementById('inp-pw').value;
-  const name  = document.getElementById('inp-name').value.trim();
-  const btn   = document.getElementById('auth-btn');
-  if (!email || !pw) { setMsg('Please enter your email and password.'); return; }
-  btn.disabled = true; btn.textContent = 'Please wait...';
-  setMsg('');
-  try {
-    if (window.authMode === 'login') {
-      const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
-      if (error) throw error;
-      const prof = await getProfile(data.user.id);
-      if (!prof) throw new Error('Account not found. Please sign up first.');
-      currentUser = data.user; currentProfile = prof;
-      loadApp();
-    } else {
-      if (!name) { setMsg('Please enter your name.'); btn.disabled=false; btn.textContent='Create account ›'; return; }
-      const { data, error } = await sb.auth.signUp({ email, password: pw });
-      if (error) throw error;
-      if (data.user) {
-        await sb.from('profiles').insert({ id: data.user.id, name, role: 'player', protein_target: 160 });
-        setMsg('Account created! You can now log in.', 'alert-ok');
-        authTab('login', null);
+  function last7() {
+    return Array.from({length:7}, (_,i) => {
+      const d = new Date(); d.setDate(d.getDate()-(6-i)); return d.toISOString().split('T')[0];
+    });
+  }
+
+  function dayLbl(ds) {
+    return new Date(ds+'T12:00:00').toLocaleDateString('en-AU', {weekday:'short'});
+  }
+
+  function setMsg(html, cls) {
+    document.getElementById('auth-msg').innerHTML = html
+      ? `<div class="alert ${cls||'alert-err'}">${html}</div>` : '';
+  }
+
+  // ── Auth UI ───────────────────────────────────────────────────────────────
+  function setAuthMode(mode) {
+    authMode = mode;
+    document.getElementById('tab-login').classList.toggle('active', mode==='login');
+    document.getElementById('tab-signup').classList.toggle('active', mode==='signup');
+    document.getElementById('name-wrap').style.display = mode==='signup' ? 'block' : 'none';
+    document.getElementById('auth-btn').textContent = mode==='login' ? 'Log in ›' : 'Create account ›';
+    document.getElementById('switch-txt').textContent = mode==='login' ? 'New here?' : 'Have an account?';
+    document.getElementById('switch-lnk').textContent = mode==='login' ? ' Create account' : ' Log in';
+    setMsg('');
+  }
+
+  document.getElementById('tab-login').addEventListener('click', () => setAuthMode('login'));
+  document.getElementById('tab-signup').addEventListener('click', () => setAuthMode('signup'));
+  document.getElementById('switch-lnk').addEventListener('click', e => { e.preventDefault(); setAuthMode(authMode==='login'?'signup':'login'); });
+  document.getElementById('inp-pw').addEventListener('keydown', e => { if(e.key==='Enter') doAuth(); });
+
+  document.getElementById('auth-btn').addEventListener('click', doAuth);
+
+  async function doAuth() {
+    const email = document.getElementById('inp-email').value.trim();
+    const pw    = document.getElementById('inp-pw').value;
+    const name  = document.getElementById('inp-name').value.trim();
+    const btn   = document.getElementById('auth-btn');
+    if (!email || !pw) { setMsg('Please enter your email and password.'); return; }
+    btn.disabled = true;
+    btn.textContent = 'Please wait...';
+    setMsg('');
+    try {
+      if (authMode === 'login') {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+        if (error) throw error;
+        currentUser = data.user;
+        const { data: prof } = await sb.from('profiles').select('*').eq('id', data.user.id).single();
+        if (!prof) throw new Error('Profile not found. Please create an account first.');
+        currentProfile = prof;
+        loadApp();
       } else {
-        setMsg('Check your email to confirm your account, then log in.', 'alert-ok');
-        authTab('login', null);
+        if (!name) { setMsg('Please enter your name.'); btn.disabled=false; btn.textContent='Create account ›'; return; }
+        const { data, error } = await sb.auth.signUp({ email, password: pw });
+        if (error) throw error;
+        if (data.user) {
+          await sb.from('profiles').insert({ id: data.user.id, name: name, role: 'player', protein_target: 160 });
+          setMsg('Account created! You can now log in.', 'alert-ok');
+          setAuthMode('login');
+        } else {
+          setMsg('Check your email to confirm, then log in.', 'alert-ok');
+          setAuthMode('login');
+        }
       }
-    }
-  } catch(e) { setMsg(e.message || 'Something went wrong. Please try again.'); }
-  btn.disabled = false;
-  btn.textContent = window.authMode==='login' ? 'Log in ›' : 'Create account ›';
-}
-
-async function signOut() {
-  await sb.auth.signOut();
-  currentUser = null; currentProfile = null;
-  show('s-auth');
-}
-
-// ── Profile / DB ───────────────────────────────────────────────────────────
-async function getProfile(uid) {
-  const { data } = await sb.from('profiles').select('*').eq('id', uid).single();
-  return data;
-}
-
-// ── App router ─────────────────────────────────────────────────────────────
-async function loadApp() {
-  if (currentProfile.role === 'coach') {
-    show('s-coach');
-    await loadCoach();
-  } else {
-    document.getElementById('player-name-title').textContent = currentProfile.name;
-    show('s-player');
-    buildPlayerForm();
-  }
-}
-
-// ── Player form ────────────────────────────────────────────────────────────
-let pState = { protein:140, sleep:7, sleepQ:null, sor:null, sorArea:'', mhr:62, shr:52, hydra:2, injury:false, notes:'' };
-
-async function buildPlayerForm() {
-  const body = document.getElementById('player-body');
-  body.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div></div>';
-
-  // load today's log if exists
-  const { data: ex } = await sb.from('logs').select('*').eq('player_id', currentUser.id).eq('date', TODAY).single();
-  if (ex) {
-    pState = { protein: ex.protein||140, sleep: ex.sleep||7, sleepQ: ex.sleep_quality||null,
-      sor: ex.soreness||null, sorArea: ex.soreness_area||'', mhr: ex.morning_hr||62,
-      shr: ex.sleep_hr||52, hydra: ex.hydration||2, injury: ex.injury||false, notes: ex.notes||'' };
-    if (ex.readiness) { showSuccess(ex); return; }
+    } catch(e) { setMsg(e.message || 'Something went wrong. Please try again.'); }
+    btn.disabled = false;
+    btn.textContent = authMode==='login' ? 'Log in ›' : 'Create account ›';
   }
 
-  const target = currentProfile.protein_target || 160;
-
-  body.innerHTML = `
-    <div id="form-msg"></div>
-
-    <div class="card">
-      <div style="font-size:13px;font-weight:600;margin-bottom:12px">🥩 Protein intake</div>
-      <div class="slider-row">
-        <input type="range" min="0" max="300" value="${pState.protein}" step="5" id="sl-protein" oninput="pState.protein=+this.value;renderProtein()">
-        <span class="slider-val" id="v-protein">${pState.protein}g</span>
-      </div>
-      <div id="protein-status" style="font-size:12px;margin-top:8px"></div>
-    </div>
-
-    <div class="card">
-      <div style="font-size:13px;font-weight:600;margin-bottom:12px">😴 Sleep</div>
-      <div class="field-label">Hours slept</div>
-      <div class="slider-row">
-        <input type="range" min="3" max="12" value="${pState.sleep}" step="0.5" id="sl-sleep" oninput="pState.sleep=+this.value;document.getElementById('v-sleep').textContent=this.value+'h'">
-        <span class="slider-val" id="v-sleep">${pState.sleep}h</span>
-      </div>
-      <div class="field-label" style="margin-top:14px">Quality (1 = terrible, 10 = best ever)</div>
-      <div class="pip-row" id="pip-sq"></div>
-    </div>
-
-    <div class="card">
-      <div style="font-size:13px;font-weight:600;margin-bottom:12px">💪 Body soreness (0 = none, 10 = severe)</div>
-      <div class="pip-row" id="pip-sor"></div>
-      <input id="inp-sor-area" class="inp" placeholder="Where does it hurt? e.g. Left knee, lower back"
-        value="${pState.sorArea}" oninput="pState.sorArea=this.value"
-        style="margin-top:12px;display:${pState.sor>0?'block':'none'}"/>
-    </div>
-
-    <div class="card">
-      <div style="font-size:13px;font-weight:600;margin-bottom:12px">🫀 Heart rate</div>
-      <div class="field-label">Morning HR (on waking)</div>
-      <div class="slider-row">
-        <input type="range" min="40" max="120" value="${pState.mhr}" id="sl-mhr" oninput="pState.mhr=+this.value;document.getElementById('v-mhr').textContent=this.value+' bpm';updateR()">
-        <span class="slider-val" id="v-mhr">${pState.mhr} bpm</span>
-      </div>
-      <div class="field-label" style="margin-top:14px">Sleeping HR (wearable, optional)</div>
-      <div class="slider-row">
-        <input type="range" min="35" max="90" value="${pState.shr}" id="sl-shr" oninput="pState.shr=+this.value;document.getElementById('v-shr').textContent=this.value+' bpm'">
-        <span class="slider-val" id="v-shr">${pState.shr} bpm</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div style="font-size:13px;font-weight:600;margin-bottom:12px">💧 Hydration</div>
-      <div class="slider-row">
-        <input type="range" min="0" max="6" value="${pState.hydra}" step="0.25" id="sl-hydra" oninput="pState.hydra=+this.value;renderHydra()">
-        <span class="slider-val" id="v-hydra">${pState.hydra}L</span>
-      </div>
-      <div id="hydra-status" style="font-size:12px;margin-top:6px"></div>
-    </div>
-
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div>
-          <div style="font-size:13px;font-weight:600">⚠️ Injury to report?</div>
-          <div style="font-size:12px;color:#666;margin-top:3px">Your coach will be alerted</div>
-        </div>
-        <div class="toggle${pState.injury?' on':''}" id="inj-toggle" onclick="pState.injury=!pState.injury;this.classList.toggle('on')">
-          <div class="toggle-knob"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div style="font-size:13px;font-weight:600;margin-bottom:10px">📝 Notes for coach (optional)</div>
-      <textarea class="inp" rows="3" placeholder="Anything your coach should know today..."
-        oninput="pState.notes=this.value" style="resize:none">${pState.notes}</textarea>
-    </div>
-
-    <button class="btn btn-primary" id="submit-btn" onclick="submitLog()">Submit today's log ›</button>
-    <p class="hint">Saved securely to the cloud</p>
-    <div style="height:2rem"></div>
-  `;
-
-  buildPips('pip-sq', 10, pState.sleepQ, n => n>=7?'g':n>=4?'a':'r', n => { pState.sleepQ=n; buildPips('pip-sq',10,n,m=>m>=7?'g':m>=4?'a':'r',arguments.callee); updateR(); });
-  buildPips('pip-sor', 10, pState.sor, n => n<=3?'g':n<=6?'a':'r', n => {
-    pState.sor=n; buildPips('pip-sor',10,n,m=>m<=3?'g':m<=6?'a':'r',arguments.callee);
-    document.getElementById('inp-sor-area').style.display = n>0?'block':'none';
-    updateR();
-  });
-
-  // expose to inline handlers
-  window.pState = pState;
-  window.updateR = updateR;
-  window.renderProtein = renderProtein;
-  window.renderHydra = renderHydra;
-
-  renderProtein();
-  renderHydra();
-  updateR();
-}
-
-function buildPips(containerId, count, selected, colorFn, onSelect) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  el.innerHTML = '';
-  for (let i=1; i<=count; i++) {
-    const d = document.createElement('div');
-    d.className = 'pip' + (i===selected ? ' '+colorFn(i) : '');
-    d.textContent = i;
-    d.onclick = () => onSelect(i);
-    el.appendChild(d);
-  }
-}
-
-function renderProtein() {
-  const target = currentProfile.protein_target || 160;
-  const diff = pState.protein - target;
-  document.getElementById('v-protein').textContent = pState.protein + 'g';
-  const el = document.getElementById('protein-status');
-  if (diff >= 0) { el.style.color='#3B6D11'; el.textContent=`+${diff}g above target (${target}g)`; }
-  else { el.style.color='#A32D2D'; el.textContent=`${Math.abs(diff)}g below target (${target}g)`; }
-}
-function renderHydra() {
-  const v = pState.hydra;
-  document.getElementById('v-hydra').textContent = Number.isInteger(v)?v+'L':v.toFixed(2).replace(/\.?0+$/,'')+'L';
-  const el = document.getElementById('hydra-status');
-  el.style.color = v>=2.5?'#3B6D11':'#854F0B';
-  el.textContent = v>=2.5?'✓ Good hydration':'Aim for 2.5L+';
-}
-function updateR() {
-  const r = calcR(pState.sleepQ, pState.sor, pState.mhr);
-  const el = document.getElementById('live-r');
-  if (el) { el.textContent = r!==null ? r+' / 100' : '—'; el.style.color = rColor(r); }
-}
-
-async function submitLog() {
-  const btn = document.getElementById('submit-btn');
-  if (!pState.sleepQ || !pState.sor) {
-    document.getElementById('form-msg').innerHTML='<div class="alert alert-err">Please select sleep quality and soreness before submitting.</div>';
-    return;
-  }
-  btn.disabled=true; btn.textContent='Saving...';
-  const r = calcR(pState.sleepQ, pState.sor, pState.mhr);
-  const entry = { player_id:currentUser.id, date:TODAY, protein:pState.protein, sleep:pState.sleep,
-    sleep_quality:pState.sleepQ, soreness:pState.sor, soreness_area:pState.sorArea,
-    morning_hr:pState.mhr, sleep_hr:pState.shr, hydration:pState.hydra,
-    injury:pState.injury, notes:pState.notes, readiness:r };
-  const { error } = await sb.from('logs').upsert(entry, { onConflict: 'player_id,date' });
-  if (error) {
-    document.getElementById('form-msg').innerHTML=`<div class="alert alert-err">${error.message}</div>`;
-    btn.disabled=false; btn.textContent='Submit today\'s log ›'; return;
-  }
-  showSuccess({ ...entry, readiness:r });
-}
-
-function showSuccess(entry) {
-  const r = entry.readiness;
-  const target = currentProfile.protein_target || 160;
-  const diff = entry.protein - target;
-  document.getElementById('suc-r').textContent = r ?? '—';
-  document.getElementById('suc-r').style.color = rColor(r);
-  document.getElementById('suc-lbl').textContent = rLabel(r);
-  document.getElementById('suc-lbl').style.color = rColor(r);
-  document.getElementById('suc-stats').innerHTML = `
-    <div class="metric">
-      <div style="font-size:12px;color:#888">Protein</div>
-      <div style="font-size:20px;font-weight:700;color:${diff>=0?'#3B6D11':'#A32D2D'}">${entry.protein}g</div>
-      <div style="font-size:11px;color:${diff>=0?'#3B6D11':'#A32D2D'}">${diff>=0?'+':''}${diff}g vs target</div>
-    </div>
-    <div class="metric">
-      <div style="font-size:12px;color:#888">Sleep</div>
-      <div style="font-size:20px;font-weight:700">${entry.sleep}h</div>
-      <div style="font-size:11px;color:#888">Quality ${entry.sleep_quality??'—'}/10</div>
-    </div>`;
-  const injEl = document.getElementById('suc-injury');
-  injEl.style.display = entry.injury ? 'block' : 'none';
-  show('s-success');
-}
-
-// ── Coach dashboard ────────────────────────────────────────────────────────
-let coachRefresh = null;
-
-async function loadCoach() {
-  clearInterval(coachRefresh);
-  await renderCoach();
-  coachRefresh = setInterval(renderCoach, 30000);
-}
-
-async function renderCoach() {
-  const days = last7();
-  const [{ data: players }, { data: todayLogs }, { data: weekLogs }] = await Promise.all([
-    sb.from('profiles').select('*').eq('role','player').order('name'),
-    sb.from('logs').select('*').eq('date', TODAY),
-    sb.from('logs').select('*').gte('date', days[0]).lte('date', TODAY)
-  ]);
-  const pl = players||[], tl = todayLogs||[], wl = weekLogs||[];
-
-  // injury banner
-  const injured = tl.filter(l=>l.injury);
-  const banner = document.getElementById('injury-banner');
-  if (injured.length) {
-    banner.style.display='block';
-    banner.innerHTML = injured.map(l => {
-      const p = pl.find(p=>p.id===l.player_id);
-      return `⚠️ <strong>${p?.name||'Player'}</strong> flagged an injury${l.soreness_area?' · '+l.soreness_area:''}`;
-    }).join('<br>');
-  } else { banner.style.display='none'; }
-
-  // today tab
-  const scores = tl.filter(l=>l.readiness).map(l=>l.readiness);
-  const avg = scores.length ? Math.round(scores.reduce((a,b)=>a+b)/scores.length) : null;
-  const notLogged = pl.filter(p=>!tl.find(l=>l.player_id===p.id));
-  document.getElementById('tc-today').innerHTML = `
-    <div class="grid2" style="margin-top:4px">
-      <div class="metric"><div style="font-size:12px;color:#888">Avg readiness</div><div style="font-size:26px;font-weight:700;color:${rColor(avg)}">${avg??'—'}</div><div style="font-size:11px;color:#888">/ 100 today</div></div>
-      <div class="metric"><div style="font-size:12px;color:#888">Logged today</div><div style="font-size:26px;font-weight:700">${tl.length} / ${pl.length}</div>${notLogged.length?`<div style="font-size:11px;color:#854F0B">${notLogged.map(p=>p.name.split(' ')[0]).join(', ')} pending</div>`:''}</div>
-    </div>
-    <div class="card" style="padding:0 14px">
-      ${pl.map((p,i) => {
-        const e = tl.find(l=>l.player_id===p.id);
-        return `<div class="player-row">
-          ${avatarEl(p.name,i)}
-          <div style="flex:1">
-            <div style="font-weight:600;font-size:14px">${p.name}</div>
-            ${e ? `<div style="font-size:12px;color:#888">Sleep ${e.sleep}h · Soreness ${e.soreness}/10${e.injury?` · <span style="color:#E24B4A;font-weight:700">⚠️ Injury</span>`:''}</div>`
-                : `<div style="font-size:12px;color:#bbb">Not logged yet</div>`}
-          </div>
-          <span class="badge ${badgeClass(e?.readiness??null)}">${e?.readiness!=null?e.readiness+'/100':'—'}</span>
-        </div>`;
-      }).join('')}
-    </div>
-    <p class="hint">Auto-refreshes every 30s</p>`;
-
-  // trends tab
-  document.getElementById('tc-trends').innerHTML = `
-    <p style="font-size:13px;color:#666;font-weight:600;margin-bottom:14px;margin-top:4px">Readiness — last 7 days</p>
-    ${pl.map((p,i) => {
-      const vals = days.map(d => wl.find(l=>l.player_id===p.id&&l.date===d)?.readiness??null);
-      const hasData = vals.some(v=>v!==null);
-      return `<div class="card">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-          ${avatarEl(p.name,i).replace('class="avatar"','class="avatar" style="width:30px;height:30px;font-size:11px;'+COLORS[i%COLORS.length].bg.replace('#','background:#')+';color:'+COLORS[i%COLORS.length].fg+'"')}
-          <span style="font-weight:600;font-size:14px">${p.name}</span>
-        </div>
-        ${!hasData ? '<div style="font-size:12px;color:#bbb;text-align:center;padding:8px 0">No data yet</div>'
-          : days.map((d,di) => {
-            const rv = vals[di];
-            return `<div class="bar-row">
-              <span style="font-size:11px;color:#888;width:30px">${dayLabel(d)}</span>
-              <div class="bar-bg"><div class="bar-fill" style="width:${rv??0}%;background:${rColor(rv)}"></div></div>
-              <span style="font-size:11px;color:#888;width:24px;text-align:right">${rv??'—'}</span>
-            </div>`;
-          }).join('')}
-      </div>`;
-    }).join('')}`;
-
-  // protein tab
-  document.getElementById('tc-protein').innerHTML = `
-    <p style="font-size:13px;color:#666;font-weight:600;margin-bottom:14px;margin-top:4px">Protein vs target — last 7 days</p>
-    ${pl.map((p,i) => {
-      const tgt = p.protein_target||160;
-      const vals = days.map(d => wl.find(l=>l.player_id===p.id&&l.date===d)?.protein??null);
-      const hits = vals.filter(v=>v!==null&&v>=tgt).length;
-      const logged = vals.filter(v=>v!==null).length;
-      return `<div class="card">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <div class="avatar" style="width:30px;height:30px;font-size:11px;background:${COLORS[i%COLORS.length].bg};color:${COLORS[i%COLORS.length].fg}">${initials(p.name)}</div>
-          <div style="flex:1"><div style="font-weight:600;font-size:14px">${p.name}</div><div style="font-size:12px;color:#888">Target: ${tgt}g/day</div></div>
-          <span style="font-size:13px;font-weight:700;color:${hits>=5?'#3B6D11':hits>=3?'#854F0B':'#A32D2D'}">${logged>0?hits+'/'+logged+' days':'No data'}</span>
-        </div>
-        <div style="display:flex;gap:4px">
-          ${days.map((d,di) => {
-            const v = vals[di]; const hit = v!==null&&v>=tgt;
-            return `<div style="flex:1;text-align:center">
-              <div style="height:26px;border-radius:5px;background:${v===null?'#f0f0f0':hit?'#EAF3DE':'#FCEBEB'};border:1px solid ${v===null?'#e0e0e0':hit?'#639922':'#E24B4A'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${v===null?'#ccc':hit?'#3B6D11':'#A32D2D'}">
-                ${v!==null?(hit?'✓':'✗'):'·'}
-              </div>
-              <div style="font-size:9px;color:#aaa;margin-top:3px">${dayLabel(d)}</div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>`;
-    }).join('')}`;
-}
-
-window.coachTab = function(tab, el) {
-  document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));
-  if(el) el.classList.add('active');
-  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
-  document.getElementById('tc-'+tab).classList.add('active');
-};
-
-// ── Boot ───────────────────────────────────────────────────────────────────
-sb.auth.onAuthStateChange(async (event, session) => {
-  if (session?.user) {
-    currentUser = session.user;
-    currentProfile = await getProfile(session.user.id);
-    if (currentProfile) { loadApp(); } else { show('s-auth'); }
-  } else {
+  // ── Sign out ──────────────────────────────────────────────────────────────
+  async function signOut() {
+    clearInterval(coachTimer);
+    await sb.auth.signOut();
+    currentUser = null; currentProfile = null;
     show('s-auth');
   }
-});
+  document.getElementById('btn-signout-player').addEventListener('click', signOut);
+  document.getElementById('btn-signout-coach').addEventListener('click', signOut);
 
-const { data: { session } } = await sb.auth.getSession();
-if (!session) show('s-auth');
+  // ── App router ────────────────────────────────────────────────────────────
+  function loadApp() {
+    if (currentProfile.role === 'coach') {
+      show('s-coach');
+      loadCoach();
+    } else {
+      document.getElementById('player-title').textContent = currentProfile.name;
+      show('s-player');
+      buildPlayerForm();
+    }
+  }
+
+  // ── Player form ───────────────────────────────────────────────────────────
+  function resetState() {
+    pState = { protein:140, sleep:7, sleepQ:null, sor:null, sorArea:'', mhr:62, shr:52, hydra:2, injury:false, notes:'' };
+  }
+
+  async function buildPlayerForm() {
+    resetState();
+    const body = document.getElementById('player-body');
+    body.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div></div>';
+
+    const { data: ex } = await sb.from('logs').select('*')
+      .eq('player_id', currentUser.id).eq('date', TODAY).maybeSingle();
+
+    if (ex) {
+      pState = {
+        protein: ex.protein||140, sleep: ex.sleep||7, sleepQ: ex.sleep_quality||null,
+        sor: ex.soreness||null, sorArea: ex.soreness_area||'', mhr: ex.morning_hr||62,
+        shr: ex.sleep_hr||52, hydra: ex.hydration||2, injury: ex.injury||false, notes: ex.notes||''
+      };
+      if (ex.readiness) { showSuccess(ex); return; }
+    }
+
+    renderForm(body);
+  }
+
+  function renderForm(body) {
+    const target = currentProfile.protein_target || 160;
+    body.innerHTML = `
+      <div id="form-msg"></div>
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px">🥩 Protein intake</div>
+        <div class="slider-row">
+          <input type="range" id="sl-p" min="0" max="300" step="5" value="${pState.protein}">
+          <span class="slider-val" id="v-p">${pState.protein}g</span>
+        </div>
+        <div id="p-status" style="font-size:12px;margin-top:8px"></div>
+      </div>
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px">😴 Sleep</div>
+        <div class="field-label">Hours slept</div>
+        <div class="slider-row">
+          <input type="range" id="sl-sl" min="3" max="12" step="0.5" value="${pState.sleep}">
+          <span class="slider-val" id="v-sl">${pState.sleep}h</span>
+        </div>
+        <div class="field-label" style="margin-top:14px">Quality (1 = terrible, 10 = best ever)</div>
+        <div class="pip-row" id="pip-sq"></div>
+      </div>
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px">💪 Body soreness (0 = none, 10 = severe)</div>
+        <div class="pip-row" id="pip-sor"></div>
+        <input id="inp-sor-area" class="inp" placeholder="Where does it hurt? e.g. Left knee, lower back"
+          value="${pState.sorArea}" style="margin-top:12px;display:${pState.sor>0?'block':'none'}"/>
+      </div>
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px">🫀 Heart rate</div>
+        <div class="field-label">Morning HR (on waking)</div>
+        <div class="slider-row">
+          <input type="range" id="sl-mhr" min="40" max="120" value="${pState.mhr}">
+          <span class="slider-val" id="v-mhr">${pState.mhr} bpm</span>
+        </div>
+        <div class="field-label" style="margin-top:14px">Sleeping HR (wearable, optional)</div>
+        <div class="slider-row">
+          <input type="range" id="sl-shr" min="35" max="90" value="${pState.shr}">
+          <span class="slider-val" id="v-shr">${pState.shr} bpm</span>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px">💧 Hydration</div>
+        <div class="slider-row">
+          <input type="range" id="sl-h" min="0" max="6" step="0.25" value="${pState.hydra}">
+          <span class="slider-val" id="v-h">${pState.hydra}L</span>
+        </div>
+        <div id="h-status" style="font-size:12px;margin-top:6px"></div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:13px;font-weight:600">⚠️ Injury to report?</div>
+            <div style="font-size:12px;color:#666;margin-top:3px">Your coach will be alerted</div>
+          </div>
+          <div class="toggle${pState.injury?' on':''}" id="inj-toggle"><div class="toggle-knob"></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px">📝 Notes for coach (optional)</div>
+        <textarea id="inp-notes" class="inp" rows="3" placeholder="Anything your coach should know today..." style="resize:none">${pState.notes}</textarea>
+      </div>
+      <button class="btn btn-primary" id="submit-btn">Submit today's log ›</button>
+      <p class="hint">Saved securely to the cloud</p>
+      <div style="height:2rem"></div>
+    `;
+
+    // Sliders
+    document.getElementById('sl-p').addEventListener('input', function() {
+      pState.protein = +this.value; renderProteinStatus(target);
+    });
+    document.getElementById('sl-sl').addEventListener('input', function() {
+      pState.sleep = +this.value; document.getElementById('v-sl').textContent = this.value + 'h';
+    });
+    document.getElementById('sl-mhr').addEventListener('input', function() {
+      pState.mhr = +this.value; document.getElementById('v-mhr').textContent = this.value + ' bpm'; updateR();
+    });
+    document.getElementById('sl-shr').addEventListener('input', function() {
+      pState.shr = +this.value; document.getElementById('v-shr').textContent = this.value + ' bpm';
+    });
+    document.getElementById('sl-h').addEventListener('input', function() {
+      pState.hydra = +this.value; renderHydra();
+    });
+    document.getElementById('inp-sor-area').addEventListener('input', function() { pState.sorArea = this.value; });
+    document.getElementById('inp-notes').addEventListener('input', function() { pState.notes = this.value; });
+
+    // Toggle
+    document.getElementById('inj-toggle').addEventListener('click', function() {
+      pState.injury = !pState.injury; this.classList.toggle('on');
+    });
+
+    // Submit
+    document.getElementById('submit-btn').addEventListener('click', submitLog);
+
+    // Pips
+    buildPips('pip-sq', 10, pState.sleepQ,
+      n => n>=7?'g':n>=4?'a':'r',
+      n => { pState.sleepQ = n; buildPips('pip-sq',10,n,m=>m>=7?'g':m>=4?'a':'r', arguments.callee); updateR(); }
+    );
+    buildPips('pip-sor', 10, pState.sor,
+      n => n<=3?'g':n<=6?'a':'r',
+      n => {
+        pState.sor = n;
+        buildPips('pip-sor',10,n,m=>m<=3?'g':m<=6?'a':'r', arguments.callee);
+        document.getElementById('inp-sor-area').style.display = n>0 ? 'block' : 'none';
+        updateR();
+      }
+    );
+
+    renderProteinStatus(target);
+    renderHydra();
+    updateR();
+  }
+
+  function buildPips(containerId, count, selected, colorFn, onSelect) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '';
+    for (let i=1; i<=count; i++) {
+      const d = document.createElement('div');
+      d.className = 'pip' + (i===selected ? ' '+colorFn(i) : '');
+      d.textContent = i;
+      d.addEventListener('click', () => onSelect(i));
+      el.appendChild(d);
+    }
+  }
+
+  function renderProteinStatus(target) {
+    const diff = pState.protein - target;
+    document.getElementById('v-p').textContent = pState.protein + 'g';
+    const el = document.getElementById('p-status');
+    el.style.color = diff>=0 ? '#3B6D11' : '#A32D2D';
+    el.textContent = diff>=0 ? `+${diff}g above target (${target}g)` : `${Math.abs(diff)}g below target (${target}g)`;
+  }
+
+  function renderHydra() {
+    const v = pState.hydra;
+    document.getElementById('v-h').textContent = (v % 1 === 0 ? v : v.toFixed(2).replace(/0+$/,'')) + 'L';
+    const el = document.getElementById('h-status');
+    el.style.color = v>=2.5 ? '#3B6D11' : '#854F0B';
+    el.textContent = v>=2.5 ? '✓ Good hydration' : 'Aim for 2.5L+';
+  }
+
+  function updateR() {
+    const r = calcR(pState.sleepQ, pState.sor, pState.mhr);
+    const el = document.getElementById('live-r');
+    if (el) { el.textContent = r!=null ? r+' / 100' : '—'; el.style.color = rColor(r); }
+  }
+
+  async function submitLog() {
+    if (!pState.sleepQ || !pState.sor) {
+      document.getElementById('form-msg').innerHTML = '<div class="alert alert-err">Please select sleep quality and soreness before submitting.</div>';
+      return;
+    }
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    const r = calcR(pState.sleepQ, pState.sor, pState.mhr);
+    const entry = {
+      player_id: currentUser.id, date: TODAY,
+      protein: pState.protein, sleep: pState.sleep,
+      sleep_quality: pState.sleepQ, soreness: pState.sor, soreness_area: pState.sorArea,
+      morning_hr: pState.mhr, sleep_hr: pState.shr, hydration: pState.hydra,
+      injury: pState.injury, notes: pState.notes, readiness: r
+    };
+    const { error } = await sb.from('logs').upsert(entry, { onConflict: 'player_id,date' });
+    if (error) {
+      document.getElementById('form-msg').innerHTML = `<div class="alert alert-err">${error.message}</div>`;
+      btn.disabled=false; btn.textContent='Submit today\'s log ›'; return;
+    }
+    showSuccess({ ...entry, readiness: r });
+  }
+
+  function showSuccess(entry) {
+    const r = entry.readiness;
+    const target = currentProfile.protein_target || 160;
+    const diff = entry.protein - target;
+    document.getElementById('suc-r').textContent = r ?? '—';
+    document.getElementById('suc-r').style.color = rColor(r);
+    document.getElementById('suc-lbl').textContent = rLabel(r);
+    document.getElementById('suc-lbl').style.color = rColor(r);
+    document.getElementById('suc-stats').innerHTML = `
+      <div class="metric" style="text-align:left">
+        <div style="font-size:12px;color:#888">Protein</div>
+        <div style="font-size:20px;font-weight:700;color:${diff>=0?'#3B6D11':'#A32D2D'}">${entry.protein}g</div>
+        <div style="font-size:11px;color:${diff>=0?'#3B6D11':'#A32D2D'}">${diff>=0?'+':''}${diff}g vs target</div>
+      </div>
+      <div class="metric" style="text-align:left">
+        <div style="font-size:12px;color:#888">Sleep</div>
+        <div style="font-size:20px;font-weight:700">${entry.sleep}h</div>
+        <div style="font-size:11px;color:#888">Quality ${entry.sleep_quality??'—'}/10</div>
+      </div>`;
+    document.getElementById('suc-injury').style.display = entry.injury ? 'block' : 'none';
+    show('s-success');
+  }
+
+  document.getElementById('btn-edit-log').addEventListener('click', () => { show('s-player'); buildPlayerForm(); });
+  document.getElementById('btn-edit-log2').addEventListener('click', () => { show('s-player'); buildPlayerForm(); });
+
+  // ── Coach ─────────────────────────────────────────────────────────────────
+  async function loadCoach() {
+    clearInterval(coachTimer);
+    await renderCoach();
+    coachTimer = setInterval(renderCoach, 30000);
+  }
+
+  async function renderCoach() {
+    const days = last7();
+    const [{ data: players }, { data: todayLogs }, { data: weekLogs }] = await Promise.all([
+      sb.from('profiles').select('*').eq('role','player').order('name'),
+      sb.from('logs').select('*').eq('date', TODAY),
+      sb.from('logs').select('*').gte('date', days[0]).lte('date', TODAY)
+    ]);
+    const pl = players||[], tl = todayLogs||[], wl = weekLogs||[];
+
+    // injury banner
+    const injured = tl.filter(l=>l.injury);
+    const banner = document.getElementById('injury-banner');
+    if (injured.length) {
+      banner.style.display = 'block';
+      banner.innerHTML = injured.map(l => {
+        const p = pl.find(p=>p.id===l.player_id);
+        return `⚠️ <strong>${p?.name||'Player'}</strong> flagged an injury${l.soreness_area?' · '+l.soreness_area:''}`;
+      }).join('<br>');
+    } else { banner.style.display='none'; }
+
+    // today
+    const scores = tl.filter(l=>l.readiness).map(l=>l.readiness);
+    const avg = scores.length ? Math.round(scores.reduce((a,b)=>a+b)/scores.length) : null;
+    const notLogged = pl.filter(p=>!tl.find(l=>l.player_id===p.id));
+    document.getElementById('tc-today').innerHTML = `
+      <div class="grid2" style="margin-top:4px">
+        <div class="metric"><div style="font-size:12px;color:#888">Avg readiness</div><div style="font-size:26px;font-weight:700;color:${rColor(avg)}">${avg??'—'}</div><div style="font-size:11px;color:#888">/ 100 today</div></div>
+        <div class="metric"><div style="font-size:12px;color:#888">Logged today</div><div style="font-size:26px;font-weight:700">${tl.length} / ${pl.length}</div>${notLogged.length?`<div style="font-size:11px;color:#854F0B">${notLogged.map(p=>p.name.split(' ')[0]).join(', ')} pending</div>`:''}</div>
+      </div>
+      <div class="card" style="padding:0 14px">
+        ${pl.map((p,i) => {
+          const e = tl.find(l=>l.player_id===p.id);
+          return `<div class="player-row">
+            ${avatarHTML(p.name,i)}
+            <div style="flex:1">
+              <div style="font-weight:600;font-size:14px">${p.name}</div>
+              ${e ? `<div style="font-size:12px;color:#888">Sleep ${e.sleep}h · Soreness ${e.soreness}/10${e.injury?` · <span style="color:#E24B4A;font-weight:700">⚠️ Injury</span>`:''}</div>`
+                  : `<div style="font-size:12px;color:#bbb">Not logged yet</div>`}
+            </div>
+            <span class="badge ${badgeCls(e?.readiness??null)}">${e?.readiness!=null?e.readiness+'/100':'—'}</span>
+          </div>`;
+        }).join('')}
+      </div>
+      <p class="hint">Auto-refreshes every 30s</p>`;
+
+    // trends
+    document.getElementById('tc-trends').innerHTML = `
+      <p style="font-size:13px;color:#666;font-weight:600;margin-bottom:14px;margin-top:4px">Readiness — last 7 days</p>
+      ${pl.map((p,i) => {
+        const c = COLORS[i%COLORS.length];
+        const vals = days.map(d => wl.find(l=>l.player_id===p.id&&l.date===d)?.readiness??null);
+        return `<div class="card">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div class="avatar" style="width:30px;height:30px;font-size:11px;background:${c.bg};color:${c.fg}">${initials(p.name)}</div>
+            <span style="font-weight:600;font-size:14px">${p.name}</span>
+          </div>
+          ${!vals.some(v=>v!=null) ? '<div style="font-size:12px;color:#bbb;text-align:center;padding:8px 0">No data yet</div>'
+            : days.map((d,di) => {
+              const rv = vals[di];
+              return `<div class="bar-row">
+                <span style="font-size:11px;color:#888;width:30px">${dayLbl(d)}</span>
+                <div class="bar-bg"><div class="bar-fill" style="width:${rv??0}%;background:${rColor(rv)}"></div></div>
+                <span style="font-size:11px;color:#888;width:24px;text-align:right">${rv??'—'}</span>
+              </div>`;
+            }).join('')}
+        </div>`;
+      }).join('')}`;
+
+    // protein
+    document.getElementById('tc-protein').innerHTML = `
+      <p style="font-size:13px;color:#666;font-weight:600;margin-bottom:14px;margin-top:4px">Protein vs target — last 7 days</p>
+      ${pl.map((p,i) => {
+        const c = COLORS[i%COLORS.length];
+        const tgt = p.protein_target||160;
+        const vals = days.map(d => wl.find(l=>l.player_id===p.id&&l.date===d)?.protein??null);
+        const hits = vals.filter(v=>v!=null&&v>=tgt).length;
+        const logged = vals.filter(v=>v!=null).length;
+        return `<div class="card">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <div class="avatar" style="width:30px;height:30px;font-size:11px;background:${c.bg};color:${c.fg}">${initials(p.name)}</div>
+            <div style="flex:1"><div style="font-weight:600;font-size:14px">${p.name}</div><div style="font-size:12px;color:#888">Target: ${tgt}g/day</div></div>
+            <span style="font-size:13px;font-weight:700;color:${hits>=5?'#3B6D11':hits>=3?'#854F0B':'#A32D2D'}">${logged>0?hits+'/'+logged+' days':'No data'}</span>
+          </div>
+          <div style="display:flex;gap:4px">
+            ${days.map((d,di) => {
+              const v = vals[di]; const hit = v!=null&&v>=tgt;
+              return `<div style="flex:1;text-align:center">
+                <div style="height:26px;border-radius:5px;background:${v==null?'#f0f0f0':hit?'#EAF3DE':'#FCEBEB'};border:1px solid ${v==null?'#e0e0e0':hit?'#639922':'#E24B4A'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${v==null?'#ccc':hit?'#3B6D11':'#A32D2D'}">
+                  ${v!=null?(hit?'✓':'✗'):'·'}
+                </div>
+                <div style="font-size:9px;color:#aaa;margin-top:3px">${dayLbl(d)}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }).join('')}`;
+  }
+
+  // Coach tabs
+  document.querySelectorAll('[data-tab]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('[data-tab]').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.getElementById('tc-'+this.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (session?.user) {
+      currentUser = session.user;
+      const { data: prof } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+      if (prof) { currentProfile = prof; loadApp(); }
+      else { show('s-auth'); }
+    } else if (event === 'SIGNED_OUT') {
+      show('s-auth');
+    }
+  });
+
+  sb.auth.getSession().then(({ data: { session } }) => {
+    if (!session) show('s-auth');
+  });
+}
 </script>
 </body>
 </html>
