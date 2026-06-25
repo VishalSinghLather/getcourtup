@@ -178,21 +178,64 @@ window.addEventListener('load', function() {
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 function boot() {
-  // Handle email confirmation redirect in URL hash
+  // Handle all Supabase redirect flows (confirmation, password reset, etc)
   var hash = window.location.hash;
+  var search = window.location.search;
+
+  // Error in URL (expired link, etc)
   if (hash && hash.includes('error=')) {
     var params = new URLSearchParams(hash.replace('#',''));
     var desc = (params.get('error_description') || 'Link expired.').replace(/\+/g,' ');
     history.replaceState(null, '', window.location.pathname);
     show('s-auth');
-    setMsg(desc + ' Please log in or resend the confirmation email.', 'alert-err');
+    setMsg(desc + ' Please log in or use the resend link below.', 'alert-err');
+    return;
+  }
+
+  // New Supabase PKCE flow - token_hash in query string
+  if (search && search.includes('token_hash')) {
+    var qparams = new URLSearchParams(search);
+    var tokenHash = qparams.get('token_hash');
+    var type = qparams.get('type') || 'email';
+    if (tokenHash) {
+      history.replaceState(null, '', window.location.pathname);
+      sb.auth.verifyOtp({token_hash: tokenHash, type: type}).then(function(res) {
+        if (res.error) {
+          show('s-auth');
+          setMsg('Confirmation link expired. Please use the resend link below.', 'alert-err');
+        } else if (res.data && res.data.user) {
+          currentUser = res.data.user;
+          sb.from('profiles').select('*').eq('id', res.data.user.id).single().then(function(r) {
+            if (r.data) { currentProfile = r.data; loadApp(); }
+            else { show('s-auth'); setMsg('Email confirmed! You can now log in.', 'alert-ok'); }
+          });
+        }
+      });
+      return;
+    }
+  }
+
+  // Legacy flow - access_token in hash
+  if (hash && hash.includes('access_token')) {
+    sb.auth.getSession().then(function(res) {
+      if (res.data && res.data.session) {
+        history.replaceState(null, '', window.location.pathname);
+        currentUser = res.data.session.user;
+        sb.from('profiles').select('*').eq('id', currentUser.id).single().then(function(r) {
+          if (r.data) { currentProfile = r.data; loadApp(); }
+          else { show('s-auth'); setMsg('Email confirmed! You can now log in.', 'alert-ok'); }
+        });
+      } else {
+        show('s-auth');
+        setMsg('Confirmation link expired. Please use the resend link below.', 'alert-err');
+      }
+    });
     return;
   }
 
   sb.auth.onAuthStateChange(function(event, session) {
     if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
       if (session && session.user) {
-        if (window.location.hash) history.replaceState(null, '', window.location.pathname);
         currentUser = session.user;
         sb.from('profiles').select('*').eq('id', session.user.id).single().then(function(res) {
           if (res.data) { currentProfile = res.data; loadApp(); }
